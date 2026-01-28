@@ -1,34 +1,116 @@
-.App-logo {
-    height: 40vmin;
-    pointer-events: none;
+/* App-specific styles */
+
+/* Search section styling */
+.search-section {
+    @apply py-16 md:py-24 px-4;
+    background: linear-gradient(180deg, #FAFAFA 0%, #FFFFFF 100%);
 }
 
-@media (prefers-reduced-motion: no-preference) {
-    .App-logo {
-        animation: App-logo-spin infinite 20s linear;
+/* Location card grid */
+.results-grid {
+    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-0;
+}
+
+/* Image gallery in cards */
+.image-gallery {
+    @apply grid grid-cols-3 gap-1;
+}
+
+.image-gallery img {
+    @apply w-full h-20 object-cover;
+}
+
+.image-gallery .main-image {
+    @apply col-span-3 h-48;
+}
+
+/* Coordinates display */
+.coordinates {
+    font-family: 'JetBrains Mono', monospace;
+    @apply text-xs text-muted-foreground;
+}
+
+/* Export button positioning */
+.export-button-container {
+    @apply fixed bottom-6 right-6 z-50;
+}
+
+/* Category badge colors */
+.category-badge-thrill_seeking {
+    @apply bg-orange-100 text-orange-800 border-orange-200;
+}
+
+.category-badge-super_chill {
+    @apply bg-green-100 text-green-800 border-green-200;
+}
+
+.category-badge-creative {
+    @apply bg-purple-100 text-purple-800 border-purple-200;
+}
+
+.category-badge-pure_entertainment {
+    @apply bg-pink-100 text-pink-800 border-pink-200;
+}
+
+.category-badge-foodie {
+    @apply bg-amber-100 text-amber-800 border-amber-200;
+}
+
+/* Empty state */
+.empty-state {
+    @apply flex flex-col items-center justify-center py-24 text-center;
+}
+
+/* Loading state */
+.loading-grid {
+    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-0;
+}
+
+.loading-card {
+    @apply p-6 border-r border-b border-border;
+}
+
+/* Hover link styling */
+.hover-link {
+    @apply text-primary hover:underline transition-colors;
+}
+
+/* Stats bar */
+.stats-bar {
+    @apply flex items-center gap-6 py-4 px-6 border-b border-border bg-secondary/30;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #a1a1a1;
+}
+
+/* Input focus ring */
+input:focus, select:focus, button:focus {
+    @apply outline-none ring-2 ring-primary ring-offset-2;
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+    .search-section {
+        @apply py-12;
     }
-}
-
-.App-header {
-    background-color: #0f0f10;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    font-size: calc(10px + 2vmin);
-    color: white;
-}
-
-.App-link {
-    color: #61dafb;
-}
-
-@keyframes App-logo-spin {
-    from {
-        transform: rotate(0deg);
-    }
-    to {
-        transform: rotate(360deg);
+    
+    .heading-primary {
+        @apply text-3xl;
     }
 }
