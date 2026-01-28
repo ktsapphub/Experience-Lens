@@ -27,7 +27,9 @@ import {
   Music,
   UtensilsCrossed,
   ExternalLink,
-  ImageOff
+  ImageOff,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -81,15 +83,13 @@ const CATEGORY_IMAGES = {
   foodie: "https://images.unsplash.com/photo-1757358957218-67e771ec07bb?w=600&h=400&fit=crop"
 };
 
-const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1569336415962-a4bd9f69cd83?q=80&w=600&h=400&fit=crop";
-
 // Location Card Component
 function LocationCard({ place, index }) {
   const [imageError, setImageError] = useState({});
   const category = CATEGORIES.find(c => c.id === place.category);
   const CategoryIcon = category?.icon || MapPin;
   
-  const mainImage = place.photos?.[0]?.url || CATEGORY_IMAGES[place.category] || FALLBACK_IMAGE;
+  const mainImage = place.photos?.[0]?.url || CATEGORY_IMAGES[place.category];
   
   const handleImageError = (idx) => {
     setImageError(prev => ({ ...prev, [idx]: true }));
@@ -247,15 +247,110 @@ function EmptyState() {
   );
 }
 
+// Pagination Component
+function Pagination({ page, totalPages, onPageChange, disabled }) {
+  const pages = [];
+  const maxVisiblePages = 5;
+  
+  let startPage = Math.max(1, page - Math.floor(maxVisiblePages / 2));
+  let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+  
+  if (endPage - startPage + 1 < maxVisiblePages) {
+    startPage = Math.max(1, endPage - maxVisiblePages + 1);
+  }
+  
+  for (let i = startPage; i <= endPage; i++) {
+    pages.push(i);
+  }
+
+  return (
+    <div className="flex items-center justify-center gap-2 py-8" data-testid="pagination">
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => onPageChange(page - 1)}
+        disabled={disabled || page <= 1}
+        data-testid="pagination-prev"
+      >
+        <ChevronLeft className="w-4 h-4 mr-1" />
+        Previous
+      </Button>
+      
+      <div className="flex items-center gap-1">
+        {startPage > 1 && (
+          <>
+            <Button
+              variant={page === 1 ? "default" : "outline"}
+              size="sm"
+              onClick={() => onPageChange(1)}
+              disabled={disabled}
+              className="w-10"
+            >
+              1
+            </Button>
+            {startPage > 2 && <span className="px-2 text-muted-foreground">...</span>}
+          </>
+        )}
+        
+        {pages.map((p) => (
+          <Button
+            key={p}
+            variant={page === p ? "default" : "outline"}
+            size="sm"
+            onClick={() => onPageChange(p)}
+            disabled={disabled}
+            className="w-10"
+            data-testid={`pagination-page-${p}`}
+          >
+            {p}
+          </Button>
+        ))}
+        
+        {endPage < totalPages && (
+          <>
+            {endPage < totalPages - 1 && <span className="px-2 text-muted-foreground">...</span>}
+            <Button
+              variant={page === totalPages ? "default" : "outline"}
+              size="sm"
+              onClick={() => onPageChange(totalPages)}
+              disabled={disabled}
+              className="w-10"
+            >
+              {totalPages}
+            </Button>
+          </>
+        )}
+      </div>
+      
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => onPageChange(page + 1)}
+        disabled={disabled || page >= totalPages}
+        data-testid="pagination-next"
+      >
+        Next
+        <ChevronRight className="w-4 h-4 ml-1" />
+      </Button>
+    </div>
+  );
+}
+
 // Main App Component
 function App() {
   const [category, setCategory] = useState("");
   const [location, setLocation] = useState("");
   const [places, setPlaces] = useState([]);
+  const [allPlaces, setAllPlaces] = useState([]); // Store all places for CSV export
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    totalPages: 1,
+    total: 0
+  });
 
-  const handleSearch = useCallback(async () => {
+  const handleSearch = useCallback(async (page = 1) => {
     if (!category) {
       toast.error("Please select a category");
       return;
@@ -272,12 +367,25 @@ function App() {
       const response = await axios.post(`${API}/places/search`, {
         category,
         location: location.trim(),
-        max_results: 50
+        page,
+        per_page: 20
       });
 
       if (response.data.success) {
         setPlaces(response.data.places);
-        toast.success(`Found ${response.data.total} locations`);
+        setPagination({
+          page: response.data.page,
+          totalPages: response.data.total_pages,
+          total: response.data.total
+        });
+        
+        // On first search, store reference for CSV export
+        if (page === 1) {
+          // Fetch all pages for export in background
+          fetchAllPagesForExport(response.data.total_pages);
+        }
+        
+        toast.success(`Found ${response.data.total} locations (showing ${response.data.places.length})`);
       }
     } catch (error) {
       console.error("Search error:", error);
@@ -289,8 +397,39 @@ function App() {
     }
   }, [category, location]);
 
+  // Fetch all pages for CSV export
+  const fetchAllPagesForExport = async (totalPages) => {
+    try {
+      const allResults = [];
+      for (let p = 1; p <= totalPages; p++) {
+        const response = await axios.post(`${API}/places/search`, {
+          category,
+          location: location.trim(),
+          page: p,
+          per_page: 20
+        });
+        if (response.data.success) {
+          allResults.push(...response.data.places);
+        }
+      }
+      setAllPlaces(allResults);
+    } catch (error) {
+      console.error("Error fetching all pages:", error);
+      setAllPlaces(places); // Fallback to current page
+    }
+  };
+
+  const handlePageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= pagination.totalPages) {
+      handleSearch(newPage);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
   const handleExportCSV = useCallback(async () => {
-    if (places.length === 0) {
+    const dataToExport = allPlaces.length > 0 ? allPlaces : places;
+    
+    if (dataToExport.length === 0) {
       toast.error("No locations to export");
       return;
     }
@@ -298,7 +437,7 @@ function App() {
     try {
       const response = await axios.post(
         `${API}/places/export-csv`,
-        places,
+        dataToExport,
         { responseType: 'blob' }
       );
 
@@ -313,16 +452,16 @@ function App() {
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
 
-      toast.success("CSV exported successfully");
+      toast.success(`Exported ${dataToExport.length} locations to CSV`);
     } catch (error) {
       console.error("Export error:", error);
       toast.error("Failed to export CSV");
     }
-  }, [places, category, location]);
+  }, [places, allPlaces, category, location]);
 
   const handleKeyPress = (e) => {
     if (e.key === 'Enter') {
-      handleSearch();
+      handleSearch(1);
     }
   };
 
@@ -393,7 +532,7 @@ function App() {
 
             {/* Search Button */}
             <Button
-              onClick={handleSearch}
+              onClick={() => handleSearch(1)}
               disabled={loading}
               className="h-14 px-8 text-base font-medium bg-primary hover:bg-primary/90"
               data-testid="search-button"
@@ -424,12 +563,12 @@ function App() {
       {/* Results Section */}
       <main>
         {/* Stats Bar */}
-        {searched && places.length > 0 && (
+        {searched && pagination.total > 0 && (
           <div className="stats-bar" data-testid="stats-bar">
             <div className="max-w-7xl mx-auto w-full flex items-center justify-between">
               <div className="flex items-center gap-6">
                 <span className="font-medium" style={{ fontFamily: 'IBM Plex Sans, sans-serif' }}>
-                  {places.length} locations found
+                  {pagination.total} locations found
                 </span>
                 {selectedCategory && (
                   <Badge variant="outline" className={selectedCategory.color}>
@@ -440,6 +579,9 @@ function App() {
                   in {location}
                 </span>
               </div>
+              <span className="text-sm text-muted-foreground">
+                Page {pagination.page} of {pagination.totalPages}
+              </span>
             </div>
           </div>
         )}
@@ -449,14 +591,26 @@ function App() {
           {loading ? (
             <LoadingSkeleton />
           ) : places.length > 0 ? (
-            <div 
-              className="results-grid border-t border-l border-border"
-              data-testid="results-grid"
-            >
-              {places.map((place, index) => (
-                <LocationCard key={place.id || index} place={place} index={index} />
-              ))}
-            </div>
+            <>
+              <div 
+                className="results-grid border-t border-l border-border"
+                data-testid="results-grid"
+              >
+                {places.map((place, index) => (
+                  <LocationCard key={place.id || index} place={place} index={index} />
+                ))}
+              </div>
+              
+              {/* Pagination */}
+              {pagination.totalPages > 1 && (
+                <Pagination
+                  page={pagination.page}
+                  totalPages={pagination.totalPages}
+                  onPageChange={handlePageChange}
+                  disabled={loading}
+                />
+              )}
+            </>
           ) : searched ? (
             <div className="empty-state py-32">
               <div className="w-20 h-20 bg-secondary rounded-full flex items-center justify-center mb-6">
@@ -466,7 +620,7 @@ function App() {
                 No locations found
               </h3>
               <p className="text-muted-foreground max-w-md">
-                Try a different category or broaden your search area
+                No locations with complete data (address, website, and images) were found. Try a different category or location.
               </p>
             </div>
           ) : (
@@ -476,7 +630,7 @@ function App() {
       </main>
 
       {/* Export Button (Fixed) */}
-      {places.length > 0 && (
+      {pagination.total > 0 && (
         <div className="export-button-container">
           <Button
             onClick={handleExportCSV}
@@ -485,7 +639,7 @@ function App() {
             data-testid="export-csv-button"
           >
             <Download className="w-5 h-5 mr-2" />
-            Export CSV ({places.length})
+            Export CSV ({allPlaces.length || pagination.total})
           </Button>
         </div>
       )}
