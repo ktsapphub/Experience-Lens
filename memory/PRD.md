@@ -59,6 +59,8 @@ Select from 5 predefined categories:
 - [x] Category-based search
 - [x] Results display with images
 - [x] CSV export
+- [x] Pagination (20 results per page)
+- [x] Filter out items without address, website, or images
 
 ### P1 (High Priority)
 - [ ] Pagination for large result sets
