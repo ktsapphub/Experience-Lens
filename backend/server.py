@@ -391,7 +391,7 @@ async def get_search_history(limit: int = Query(default=10, le=100)):
     """Get recent search history"""
     history = await db.search_history.find(
         {},
-        {"_id": 0}
+        {"_id": 0, "id": 1, "category": 1, "location": 1, "results_count": 1, "timestamp": 1}
     ).sort("timestamp", -1).limit(limit).to_list(length=limit)
     return {"history": history}
 
@@ -407,8 +407,11 @@ async def create_status_check(input: StatusCheckCreate):
 
 
 @api_router.get("/status", response_model=List[StatusCheck])
-async def get_status_checks():
-    status_checks = await db.status_checks.find({}, {"_id": 0}).to_list(1000)
+async def get_status_checks(limit: int = Query(default=100, le=1000)):
+    status_checks = await db.status_checks.find(
+        {}, 
+        {"_id": 0, "id": 1, "client_name": 1, "timestamp": 1}
+    ).sort("timestamp", -1).limit(limit).to_list(length=limit)
     for check in status_checks:
         if isinstance(check['timestamp'], str):
             check['timestamp'] = datetime.fromisoformat(check['timestamp'])
