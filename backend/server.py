@@ -149,9 +149,6 @@ async def search_places(request: SearchRequest):
             detail=f"Invalid category. Valid categories: {list(CATEGORY_TYPES.keys())}"
         )
     
-    # Limit max results to 50
-    max_results = min(request.max_results, 50)
-    
     try:
         all_places = []
         
@@ -162,7 +159,7 @@ async def search_places(request: SearchRequest):
             # Use Text Search API (New) for better results
             search_payload = {
                 "textQuery": f"{keywords} in {request.location}",
-                "maxResultCount": min(max_results, 20)  # API limit per request
+                "maxResultCount": 20
             }
             
             headers = {
@@ -186,9 +183,24 @@ async def search_places(request: SearchRequest):
             data = response.json()
             
             for place in data.get("places", []):
+                # Skip places without photos
+                photos_data = place.get("photos", [])
+                if not photos_data:
+                    continue
+                
+                # Skip places without website
+                website = place.get("websiteUri")
+                if not website:
+                    continue
+                
+                # Skip places without proper address
+                address = place.get("formattedAddress", "")
+                if not address or address == "Address not available":
+                    continue
+                
                 # Build photo URLs (up to 3)
                 photos = []
-                for photo in place.get("photos", [])[:3]:
+                for photo in photos_data[:3]:
                     photo_name = photo.get("name", "")
                     if photo_name:
                         photo_url = f"https://places.googleapis.com/v1/{photo_name}/media?maxHeightPx=400&maxWidthPx=600&key={GOOGLE_PLACES_API_KEY}"
@@ -204,10 +216,10 @@ async def search_places(request: SearchRequest):
                 place_result = PlaceResult(
                     id=place.get("id", str(uuid.uuid4())),
                     name=place.get("displayName", {}).get("text", "Unknown"),
-                    address=place.get("formattedAddress", "Address not available"),
+                    address=address,
                     latitude=location.get("latitude", 0),
                     longitude=location.get("longitude", 0),
-                    website=place.get("websiteUri"),
+                    website=website,
                     instagram=extract_instagram(place),
                     description=description,
                     photos=photos,
@@ -216,61 +228,72 @@ async def search_places(request: SearchRequest):
                 )
                 all_places.append(place_result)
             
-            # If we need more results, make additional searches with specific place types
-            if len(all_places) < max_results:
-                place_types = CATEGORY_TYPES.get(request.category, [])
+            # Make additional searches with specific place types to get more results
+            place_types = CATEGORY_TYPES.get(request.category, [])
+            
+            for place_type in place_types[:3]:
+                if len(all_places) >= 60:  # Cap at 60 total results
+                    break
                 
-                for place_type in place_types[:2]:  # Limit to 2 additional searches
-                    if len(all_places) >= max_results:
-                        break
-                    
-                    search_payload = {
-                        "textQuery": f"{place_type} in {request.location}",
-                        "maxResultCount": min(20, max_results - len(all_places))
-                    }
-                    
-                    response = await http_client.post(
-                        "https://places.googleapis.com/v1/places:searchText",
-                        json=search_payload,
-                        headers=headers
-                    )
-                    
-                    if response.status_code == 200:
-                        data = response.json()
-                        for place in data.get("places", []):
-                            # Check if place already exists
-                            place_id = place.get("id")
-                            if any(p.id == place_id for p in all_places):
-                                continue
-                            
-                            photos = []
-                            for photo in place.get("photos", [])[:3]:
-                                photo_name = photo.get("name", "")
-                                if photo_name:
-                                    photo_url = f"https://places.googleapis.com/v1/{photo_name}/media?maxHeightPx=400&maxWidthPx=600&key={GOOGLE_PLACES_API_KEY}"
-                                    photos.append(Photo(url=photo_url, height=400, width=600))
-                            
-                            location = place.get("location", {})
-                            editorial = place.get("editorialSummary", {})
-                            description = editorial.get("text", "") if editorial else ""
-                            
-                            place_result = PlaceResult(
-                                id=place.get("id", str(uuid.uuid4())),
-                                name=place.get("displayName", {}).get("text", "Unknown"),
-                                address=place.get("formattedAddress", "Address not available"),
-                                latitude=location.get("latitude", 0),
-                                longitude=location.get("longitude", 0),
-                                website=place.get("websiteUri"),
-                                instagram=extract_instagram(place),
-                                description=description,
-                                photos=photos,
-                                rating=place.get("rating"),
-                                category=request.category
-                            )
-                            all_places.append(place_result)
-                            
-                            if len(all_places) >= max_results:
-                                break
+                search_payload = {
+                    "textQuery": f"{place_type} in {request.location}",
+                    "maxResultCount": 20
+                }
+                
+                response = await http_client.post(
+                    "https://places.googleapis.com/v1/places:searchText",
+                    json=search_payload,
+                    headers=headers
+                )
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    for place in data.get("places", []):
+                        # Check if place already exists
+                        place_id = place.get("id")
+                        if any(p.id == place_id for p in all_places):
+                            continue
+                        
+                        # Skip places without photos
+                        photos_data = place.get("photos", [])
+                        if not photos_data:
+                            continue
+                        
+                        # Skip places without website
+                        website = place.get("websiteUri")
+                        if not website:
+                            continue
+                        
+                        # Skip places without proper address
+                        address = place.get("formattedAddress", "")
+                        if not address or address == "Address not available":
+                            continue
+                        
+                        photos = []
+                        for photo in photos_data[:3]:
+                            photo_name = photo.get("name", "")
+                            if photo_name:
+                                photo_url = f"https://places.googleapis.com/v1/{photo_name}/media?maxHeightPx=400&maxWidthPx=600&key={GOOGLE_PLACES_API_KEY}"
+                                photos.append(Photo(url=photo_url, height=400, width=600))
+                        
+                        location = place.get("location", {})
+                        editorial = place.get("editorialSummary", {})
+                        description = editorial.get("text", "") if editorial else ""
+                        
+                        place_result = PlaceResult(
+                            id=place.get("id", str(uuid.uuid4())),
+                            name=place.get("displayName", {}).get("text", "Unknown"),
+                            address=address,
+                            latitude=location.get("latitude", 0),
+                            longitude=location.get("longitude", 0),
+                            website=website,
+                            instagram=extract_instagram(place),
+                            description=description,
+                            photos=photos,
+                            rating=place.get("rating"),
+                            category=request.category
+                        )
+                        all_places.append(place_result)
         
         # Store search in history
         search_history = {
@@ -282,10 +305,23 @@ async def search_places(request: SearchRequest):
         }
         await db.search_history.insert_one(search_history)
         
+        # Pagination
+        total = len(all_places)
+        per_page = request.per_page
+        total_pages = (total + per_page - 1) // per_page if total > 0 else 1
+        page = max(1, min(request.page, total_pages))
+        
+        start_idx = (page - 1) * per_page
+        end_idx = start_idx + per_page
+        paginated_places = all_places[start_idx:end_idx]
+        
         return SearchResponse(
             success=True,
-            places=all_places[:max_results],
-            total=len(all_places[:max_results])
+            places=paginated_places,
+            total=total,
+            page=page,
+            per_page=per_page,
+            total_pages=total_pages
         )
     
     except httpx.RequestError as e:
