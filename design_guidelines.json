@@ -1,0 +1,98 @@
+{
+  "typography": {
+    "font_family": {
+      "heading": "IBM Plex Sans, sans-serif",
+      "body": "Inter, sans-serif",
+      "mono": "JetBrains Mono, monospace"
+    },
+    "scale": {
+      "h1": "text-4xl md:text-5xl font-semibold tracking-tight",
+      "h2": "text-3xl font-medium tracking-tight",
+      "h3": "text-2xl font-medium",
+      "body": "text-base leading-relaxed",
+      "small": "text-sm text-muted-foreground"
+    },
+    "instructions": "Use IBM Plex Sans for all headings to give a 'technical/data' feel. Use Inter for body text for maximum legibility. Use JetBrains Mono for coordinates or technical data points."
+  },
+  "colors": {
+    "palette": {
+      "background": "#FFFFFF",
+      "foreground": "#09090B",
+      "primary": "#2563EB",
+      "primary_foreground": "#FFFFFF",
+      "secondary": "#F4F4F5",
+      "secondary_foreground": "#18181B",
+      "muted": "#F4F4F5",
+      "muted_foreground": "#71717A",
+      "accent": "#F4F4F5",
+      "accent_foreground": "#18181B",
+      "destructive": "#EF4444",
+      "destructive_foreground": "#FAFAFA",
+      "border": "#E4E4E7",
+      "input": "#E4E4E7",
+      "ring": "#2563EB"
+    },
+    "archetype": "Swiss & High-Contrast (Archetype 4)",
+    "strategy": "Stark white background with deep black text. Use the Primary Blue (#2563EB) ONLY for the main 'Search' action and active states. Avoid gradients. Use 1px borders to define structure."
+  },
+  "layout": {
+    "grid_system": "Bento Grid Protocol - Mode B (High Density)",
+    "container": "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8",
+    "spacing": {
+      "section_gap": "py-12 md:py-24",
+      "element_gap": "gap-4 md:gap-6"
+    },
+    "surface_strategy": "Grid Borders (The 'Technical' Look). Expose the skeleton. Use border-r and border-b for grid items to create a spreadsheet-like but modern feel."
+  },
+  "components": {
+    "search_section": {
+      "style": "Heroic, centered input field. Minimalist but large.",
+      "elements": [
+        "Large Input (h-12 or h-14)",
+        "Category Dropdown (Shadcn Select)",
+        "Search Button (Pill shaped or Sharp Rectangular)"
+      ]
+    },
+    "location_card": {
+      "style": "Flat, bordered, no shadow by default. Hover: Lift + Shadow-lg.",
+      "structure": [
+        "Image Aspect Ratio: 16:9 or 4:3",
+        "Title: IBM Plex Sans, font-medium",
+        "Tags: Badge component (outline variant)",
+        "Data Points: Grid layout for Address, Website, Socials"
+      ]
+    },
+    "export_button": {
+      "position": "Fixed bottom-right or Sticky top-right",
+      "style": "Floating Action Button style or Ghost button in header"
+    }
+  },
+  "images": {
+    "categories": {
+      "thrill_seeking": "https://images.unsplash.com/photo-1613456806102-6d5ef869f75e",
+      "super_chill": "https://images.unsplash.com/photo-1633526543913-d30e3c230d1f",
+      "creative": "https://images.unsplash.com/photo-1720176472643-731fc581b10e",
+      "pure_entertainment": "https://images.unsplash.com/photo-1740459057005-65f000db582f",
+      "foodie": "https://images.unsplash.com/photo-1757358957218-67e771ec07bb"
+    },
+    "placeholders": {
+      "location_fallback": "https://images.unsplash.com/photo-1569336415962-a4bd9f69cd83?q=80&w=2831&auto=format&fit=crop"
+    },
+    "instructions": "Use these images as category headers or fallbacks if the API does not return an image. Ensure object-cover is used."
+  },
+  "motion": {
+    "library": "framer-motion",
+    "entrance": "Staggered fade-in for list items (0.05s delay per item).",
+    "hover": "Scale 1.02 on cards. Button press scale 0.95.",
+    "transition": "transition-all duration-200 ease-out"
+  },
+  "universal_guidelines": [
+    "Do not use generic centered layouts for the results grid.",
+    "Use 2-3x more spacing than typical designs.",
+    "Every interaction needs micro-animations.",
+    "All interactive elements MUST include data-testid attribute.",
+    "Use sonner for toasts.",
+    "Prioritize Shadcn components but customize them to match the 'Swiss' aesthetic (sharp corners, high contrast borders)."
+  ],
+  "instructions_to_main_agent": "Implement the dashboard with a focus on data clarity. The user wants to 'scrape' and 'collect', so the UI should feel efficient. Use the 'Grid Borders' surface strategy to give it a structured, tool-like appearance. Ensure the Export to CSV button is easily accessible."
+}
