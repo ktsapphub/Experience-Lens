@@ -81,13 +81,17 @@ class PlaceResult(BaseModel):
 class SearchRequest(BaseModel):
     category: str
     location: str
-    max_results: int = 50
+    page: int = 1
+    per_page: int = 20
 
 
 class SearchResponse(BaseModel):
     success: bool
     places: List[PlaceResult]
     total: int
+    page: int
+    per_page: int
+    total_pages: int
 
 
 class StatusCheck(BaseModel):
