@@ -40,35 +40,35 @@ const CATEGORIES = [
   { 
     id: "thrill_seeking", 
     name: "Thrill Seeking", 
-    description: "Adventurous outings like rock climbing, theme parks, paintball",
+    description: "High-energy, adrenaline, competitive, or challenge-based experiences",
     icon: Mountain,
     color: "bg-orange-100 text-orange-800 border-orange-200"
   },
   { 
     id: "super_chill", 
     name: "Super Chill", 
-    description: "Relaxing items like spas, yoga, hiking trails, golf",
+    description: "Wellness, scenery, casual play, or easy exploration activities",
     icon: Sparkles,
     color: "bg-green-100 text-green-800 border-green-200"
   },
   { 
     id: "creative", 
     name: "Creative", 
-    description: "Arts like museums, DIY arts and crafts, workshops",
+    description: "Hands-on making, artistic expression, or interactive exhibits",
     icon: Palette,
     color: "bg-purple-100 text-purple-800 border-purple-200"
   },
   { 
     id: "pure_entertainment", 
     name: "Pure Entertainment", 
-    description: "Venues for performing arts, theaters, concerts",
+    description: "Shows, performances, spectacles, or ticketed venues",
     icon: Music,
     color: "bg-pink-100 text-pink-800 border-pink-200"
   },
   { 
     id: "foodie", 
     name: "Foodie", 
-    description: "Restaurants, wineries, breweries, cooking classes",
+    description: "Tastings, pairings, ambiance dining, or curated culinary experiences",
     icon: UtensilsCrossed,
     color: "bg-amber-100 text-amber-800 border-amber-200"
   }
