@@ -228,6 +228,16 @@ async def search_places(request: SearchRequest):
                     rating=place.get("rating"),
                     category=request.category
                 )
+                
+                # Deduplication check by ID and name+address
+                place_id = place.get("id")
+                name_addr_key = f"{place_result.name}|{place_result.address}".lower()
+                
+                if place_id in seen_ids or name_addr_key in seen_names_addresses:
+                    continue
+                
+                seen_ids.add(place_id)
+                seen_names_addresses.add(name_addr_key)
                 all_places.append(place_result)
             
             # Make additional searches with specific place types to get more results
