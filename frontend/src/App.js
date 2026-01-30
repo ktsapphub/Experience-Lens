@@ -42,7 +42,7 @@ import {
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
-// Category configuration
+// Category configuration with tooltips
 const CATEGORIES = [
   { 
     id: "thrill_seeking", 
@@ -50,7 +50,12 @@ const CATEGORIES = [
     description: "High-energy, adrenaline, competitive experiences",
     icon: Mountain,
     color: "bg-orange-500",
-    lightColor: "bg-orange-100 text-orange-800 border-orange-200"
+    lightColor: "bg-orange-100 text-orange-800 border-orange-200",
+    tooltip: {
+      title: "Thrill Seeking Experiences",
+      description: "High-energy, adrenaline-driven, competitive, or challenge-based activities that feel like an event.",
+      keywords: ["escape room", "go kart", "rock climbing gym", "zipline"]
+    }
   },
   { 
     id: "super_chill", 
@@ -58,7 +63,12 @@ const CATEGORIES = [
     description: "Wellness, scenery, casual exploration",
     icon: Sparkles,
     color: "bg-emerald-500",
-    lightColor: "bg-green-100 text-green-800 border-green-200"
+    lightColor: "bg-green-100 text-green-800 border-green-200",
+    tooltip: {
+      title: "Super Chill Experiences",
+      description: "Low-pressure, relaxed-pace activities focused on wellness, scenery, casual play, or easy exploration.",
+      keywords: ["spa", "botanical garden", "yoga studio", "scenic cruise"]
+    }
   },
   { 
     id: "creative", 
@@ -66,7 +76,12 @@ const CATEGORIES = [
     description: "Hands-on making, artistic expression",
     icon: Palette,
     color: "bg-violet-500",
-    lightColor: "bg-purple-100 text-purple-800 border-purple-200"
+    lightColor: "bg-purple-100 text-purple-800 border-purple-200",
+    tooltip: {
+      title: "Creative Experiences",
+      description: "Hands-on making, artistic expression, interactive exhibits, or photo-forward experiences.",
+      keywords: ["paint and sip", "pottery class", "immersive art", "candle making"]
+    }
   },
   { 
     id: "pure_entertainment", 
@@ -74,7 +89,12 @@ const CATEGORIES = [
     description: "Shows, performances, spectacles",
     icon: Music,
     color: "bg-pink-500",
-    lightColor: "bg-pink-100 text-pink-800 border-pink-200"
+    lightColor: "bg-pink-100 text-pink-800 border-pink-200",
+    tooltip: {
+      title: "Pure Entertainment Experiences",
+      description: "Sit-back-and-enjoy experiences such as shows, games, spectacles, or ticketed venues.",
+      keywords: ["comedy club", "concert venue", "live music", "theater"]
+    }
   },
   { 
     id: "foodie", 
@@ -82,7 +102,12 @@ const CATEGORIES = [
     description: "Tastings, dining, culinary experiences",
     icon: UtensilsCrossed,
     color: "bg-amber-500",
-    lightColor: "bg-amber-100 text-amber-800 border-amber-200"
+    lightColor: "bg-amber-100 text-amber-800 border-amber-200",
+    tooltip: {
+      title: "Foodie Experiences",
+      description: "Food and drink as the main event, including tastings, pairings, ambiance dining, or curated culinary experiences.",
+      keywords: ["rooftop bar", "winery", "cooking class", "speakeasy"]
+    }
   }
 ];
 
