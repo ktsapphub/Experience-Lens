@@ -162,6 +162,37 @@ class UserResponse(BaseModel):
     created_at: str
 
 
+# Configuration Models
+class CategoryConfig(BaseModel):
+    category_id: str
+    place_types: List[str]
+    keywords: str
+
+
+class ConfigUpdate(BaseModel):
+    category_id: str
+    place_types: Optional[List[str]] = None
+    keywords: Optional[str] = None
+
+
+class SearchHistoryResult(BaseModel):
+    name: str
+    address: str
+    website: Optional[str] = None
+
+
+class SearchHistoryEntry(BaseModel):
+    id: str
+    timestamp: str
+    category: str
+    search_method: str
+    location: str
+    region: str
+    location_names: List[str]
+    results_count: int
+    results: List[SearchHistoryResult]
+
+
 # Helper function to extract Instagram from website or editorial summary
 def extract_instagram(place_data: dict) -> Optional[str]:
     """Try to extract Instagram handle from place data"""
