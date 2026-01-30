@@ -553,8 +553,9 @@ function App() {
   };
 
   const handleRegionChange = (value) => {
-    setRegion(value);
-    if (value) {
+    const newRegion = value === "none" ? "" : value;
+    setRegion(newRegion);
+    if (newRegion) {
       setLocation(""); // Clear location when region is selected
     }
   };
