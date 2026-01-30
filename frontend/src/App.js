@@ -702,7 +702,7 @@ function App() {
                   data-testid="export-csv-button"
                 >
                   <Download className="w-4 h-4 mr-2" />
-                  Export All ({allPlaces.length || pagination.total})
+                  Export All ({visibleAllPlaces.length || visiblePlaces.length})
                 </Button>
               </div>
             )}
