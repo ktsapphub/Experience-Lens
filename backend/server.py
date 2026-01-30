@@ -42,8 +42,13 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Category to Google Place Types mapping
-CATEGORY_TYPES = {
+# App Configuration
+APP_VERSION = "1.0.0"
+API_VERSION = "Google Places API (New) v1"
+BUILD_DATE = "2026-01-30"
+
+# Default Category to Google Place Types mapping
+DEFAULT_CATEGORY_TYPES = {
     "thrill_seeking": ["amusement_park", "bowling_alley", "tourist_attraction"],
     "super_chill": ["spa", "park", "zoo", "aquarium", "tourist_attraction"],
     "creative": ["museum", "art_gallery", "tourist_attraction"],
@@ -51,14 +56,18 @@ CATEGORY_TYPES = {
     "foodie": ["restaurant", "cafe", "bar", "meal_takeaway"]
 }
 
-# Category search keywords for text search - comprehensive and specific
-CATEGORY_KEYWORDS = {
+# Default Category search keywords
+DEFAULT_CATEGORY_KEYWORDS = {
     "thrill_seeking": "axe throwing OR go kart OR karting OR escape room OR rock climbing gym OR bouldering OR zipline OR aerial adventure park OR ropes course OR paintball OR airsoft OR skydiving OR indoor skydiving OR water park OR theme park OR surf lessons OR ski resort OR jet ski rental OR whitewater rafting OR ATV tours OR trampoline park OR laser tag",
     "super_chill": "spa OR massage OR yoga studio OR pilates OR meditation center OR botanical garden OR hiking trail OR nature preserve OR mini golf OR bike trail OR bike rental OR pier OR boardwalk OR fishing charter OR city tour OR walking tour OR arcade OR barcade OR aquarium OR zoo OR scenic cruise OR harbor cruise OR golf course OR driving range",
     "creative": "paint and sip OR pottery class OR ceramics studio OR paint your own pottery OR candle making OR rug tufting OR tufting studio OR DIY workshop OR maker space OR art workshop OR woodworking class OR glassblowing class OR jewelry making OR flower bar OR immersive art OR interactive art exhibit OR selfie museum OR photo experience OR art museum OR art gallery",
     "pure_entertainment": "IMAX OR movie theater OR live music venue OR concert venue OR comedy club OR comedy show OR performing arts center OR theater OR playhouse OR arena OR stadium OR sports venue OR event venue OR symphony OR opera",
     "foodie": "restaurant OR rooftop bar OR rooftop lounge OR brunch OR speakeasy OR cocktail bar OR wine bar OR winery OR vineyard OR brewery OR taproom OR distillery OR food tour OR tasting tour OR cooking class OR culinary school OR food hall OR public market OR dinner cruise OR dessert bar OR afternoon tea"
 }
+
+# Runtime config (can be modified via API)
+CATEGORY_TYPES = DEFAULT_CATEGORY_TYPES.copy()
+CATEGORY_KEYWORDS = DEFAULT_CATEGORY_KEYWORDS.copy()
 
 
 # Models
