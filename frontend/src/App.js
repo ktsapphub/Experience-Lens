@@ -13,6 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Search, 
   Download, 
@@ -32,7 +33,9 @@ import {
   ChevronRight,
   Plus,
   X,
-  MapPinned
+  Map,
+  Navigation,
+  Building2
 } from "lucide-react";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -43,60 +46,65 @@ const CATEGORIES = [
   { 
     id: "thrill_seeking", 
     name: "Thrill Seeking", 
-    description: "High-energy, adrenaline, competitive, or challenge-based experiences",
+    description: "High-energy, adrenaline, competitive experiences",
     icon: Mountain,
-    color: "bg-orange-100 text-orange-800 border-orange-200"
+    color: "bg-orange-500",
+    lightColor: "bg-orange-100 text-orange-800 border-orange-200"
   },
   { 
     id: "super_chill", 
     name: "Super Chill", 
-    description: "Wellness, scenery, casual play, or easy exploration activities",
+    description: "Wellness, scenery, casual exploration",
     icon: Sparkles,
-    color: "bg-green-100 text-green-800 border-green-200"
+    color: "bg-emerald-500",
+    lightColor: "bg-green-100 text-green-800 border-green-200"
   },
   { 
     id: "creative", 
     name: "Creative", 
-    description: "Hands-on making, artistic expression, or interactive exhibits",
+    description: "Hands-on making, artistic expression",
     icon: Palette,
-    color: "bg-purple-100 text-purple-800 border-purple-200"
+    color: "bg-violet-500",
+    lightColor: "bg-purple-100 text-purple-800 border-purple-200"
   },
   { 
     id: "pure_entertainment", 
     name: "Pure Entertainment", 
-    description: "Shows, performances, spectacles, or ticketed venues",
+    description: "Shows, performances, spectacles",
     icon: Music,
-    color: "bg-pink-100 text-pink-800 border-pink-200"
+    color: "bg-pink-500",
+    lightColor: "bg-pink-100 text-pink-800 border-pink-200"
   },
   { 
     id: "foodie", 
     name: "Foodie", 
-    description: "Tastings, pairings, ambiance dining, or curated culinary experiences",
+    description: "Tastings, dining, culinary experiences",
     icon: UtensilsCrossed,
-    color: "bg-amber-100 text-amber-800 border-amber-200"
+    color: "bg-amber-500",
+    lightColor: "bg-amber-100 text-amber-800 border-amber-200"
   }
 ];
 
 // US Regions configuration
 const US_REGIONS = {
   northeast: {
-    name: "Northeast Region",
+    name: "Northeast",
     states: ["Connecticut", "Maine", "Massachusetts", "New Hampshire", "Rhode Island", "Vermont", "New Jersey", "New York", "Pennsylvania"]
   },
   southeast: {
-    name: "Southeast Region",
-    states: ["Alabama", "Florida", "Georgia", "Kentucky", "Mississippi", "North Carolina", "South Carolina", "Tennessee", "Virginia", "West Virginia", "Maryland", "Delaware", "District of Columbia"]
+    name: "Southeast",
+    states: ["Alabama", "Florida", "Georgia", "Kentucky", "Mississippi", "North Carolina", "South Carolina", "Tennessee", "Virginia", "West Virginia", "Maryland", "Delaware", "DC"]
   },
   midwest: {
-    name: "Midwest Region",
+    name: "Midwest",
     states: ["Illinois", "Indiana", "Michigan", "Ohio", "Wisconsin", "Iowa", "Kansas", "Minnesota", "Missouri", "Nebraska", "North Dakota", "South Dakota"]
   },
   southwest: {
-    name: "Southwest Region",
+    name: "Southwest",
     states: ["Arizona", "Arkansas", "Louisiana", "New Mexico", "Oklahoma", "Texas"]
   },
   west_coast: {
-    name: "West Coast Region",
+    name: "West Coast",
     states: ["California", "Oregon", "Washington", "Nevada", "Idaho", "Montana", "Utah", "Wyoming", "Colorado", "Alaska", "Hawaii"]
   }
 };
@@ -128,7 +136,6 @@ function LocationCard({ place, index }) {
       style={{ animationDelay: `${index * 0.05}s` }}
       data-testid={`location-card-${index}`}
     >
-      {/* Main Image */}
       <div className="relative h-48 bg-secondary overflow-hidden">
         {imageError.main ? (
           <div className="w-full h-full flex items-center justify-center bg-secondary">
@@ -151,7 +158,6 @@ function LocationCard({ place, index }) {
         )}
       </div>
 
-      {/* Additional Images */}
       {place.photos?.length > 1 && (
         <div className="grid grid-cols-3 gap-px bg-border">
           {place.photos.slice(1, 4).map((photo, idx) => (
@@ -175,36 +181,31 @@ function LocationCard({ place, index }) {
       )}
 
       <CardContent className="p-5 space-y-4">
-        {/* Title and Category */}
         <div className="space-y-2">
           <h3 className="font-semibold text-lg leading-tight line-clamp-2" style={{ fontFamily: 'IBM Plex Sans, sans-serif' }}>
             {place.name}
           </h3>
-          <Badge variant="outline" className={`text-xs ${category?.color || ''}`}>
+          <Badge variant="outline" className={`text-xs ${category?.lightColor || ''}`}>
             <CategoryIcon className="w-3 h-3 mr-1" />
             {category?.name || place.category}
           </Badge>
         </div>
 
-        {/* Address */}
         <div className="flex items-start gap-2 text-sm text-muted-foreground">
           <MapPin className="w-4 h-4 shrink-0 mt-0.5" />
           <span className="line-clamp-2">{place.address}</span>
         </div>
 
-        {/* Description */}
         {place.description && (
           <p className="text-sm text-muted-foreground line-clamp-2">
             {place.description}
           </p>
         )}
 
-        {/* Coordinates */}
         <div className="text-mono text-xs text-muted-foreground bg-secondary/50 px-2 py-1 rounded">
           {place.latitude.toFixed(6)}, {place.longitude.toFixed(6)}
         </div>
 
-        {/* Links */}
         <div className="flex flex-wrap gap-2 pt-2">
           {place.website && (
             <a
@@ -268,7 +269,7 @@ function EmptyState() {
         No locations yet
       </h3>
       <p className="text-muted-foreground max-w-md">
-        Select a category and enter a location to discover amazing places
+        Select a category and search method to discover amazing places
       </p>
     </div>
   );
@@ -306,45 +307,17 @@ function Pagination({ page, totalPages, onPageChange, disabled }) {
       <div className="flex items-center gap-1">
         {startPage > 1 && (
           <>
-            <Button
-              variant={page === 1 ? "default" : "outline"}
-              size="sm"
-              onClick={() => onPageChange(1)}
-              disabled={disabled}
-              className="w-10"
-            >
-              1
-            </Button>
+            <Button variant={page === 1 ? "default" : "outline"} size="sm" onClick={() => onPageChange(1)} disabled={disabled} className="w-10">1</Button>
             {startPage > 2 && <span className="px-2 text-muted-foreground">...</span>}
           </>
         )}
-        
         {pages.map((p) => (
-          <Button
-            key={p}
-            variant={page === p ? "default" : "outline"}
-            size="sm"
-            onClick={() => onPageChange(p)}
-            disabled={disabled}
-            className="w-10"
-            data-testid={`pagination-page-${p}`}
-          >
-            {p}
-          </Button>
+          <Button key={p} variant={page === p ? "default" : "outline"} size="sm" onClick={() => onPageChange(p)} disabled={disabled} className="w-10" data-testid={`pagination-page-${p}`}>{p}</Button>
         ))}
-        
         {endPage < totalPages && (
           <>
             {endPage < totalPages - 1 && <span className="px-2 text-muted-foreground">...</span>}
-            <Button
-              variant={page === totalPages ? "default" : "outline"}
-              size="sm"
-              onClick={() => onPageChange(totalPages)}
-              disabled={disabled}
-              className="w-10"
-            >
-              {totalPages}
-            </Button>
+            <Button variant={page === totalPages ? "default" : "outline"} size="sm" onClick={() => onPageChange(totalPages)} disabled={disabled} className="w-10">{totalPages}</Button>
           </>
         )}
       </div>
@@ -363,31 +336,10 @@ function Pagination({ page, totalPages, onPageChange, disabled }) {
   );
 }
 
-// Region States Display Component
-function RegionStatesDisplay({ regionId }) {
-  if (!regionId || !US_REGIONS[regionId]) return null;
-  
-  const region = US_REGIONS[regionId];
-  
-  return (
-    <div className="mt-4 p-4 bg-secondary/50 rounded-lg border border-border" data-testid="region-states-display">
-      <h4 className="text-sm font-medium mb-2 text-foreground" style={{ fontFamily: 'IBM Plex Sans, sans-serif' }}>
-        {region.name} includes:
-      </h4>
-      <div className="flex flex-wrap gap-2">
-        {region.states.map((state) => (
-          <Badge key={state} variant="outline" className="text-xs bg-white">
-            {state}
-          </Badge>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 // Main App Component
 function App() {
   const [category, setCategory] = useState("");
+  const [searchTab, setSearchTab] = useState("location");
   const [location, setLocation] = useState("");
   const [region, setRegion] = useState("");
   const [locationNames, setLocationNames] = useState([""]);
@@ -401,20 +353,17 @@ function App() {
     total: 0
   });
 
-  // Add a new location name field
   const addLocationName = () => {
     if (locationNames.length < 10) {
       setLocationNames([...locationNames, ""]);
     }
   };
 
-  // Remove a location name field
   const removeLocationName = (index) => {
     const newNames = locationNames.filter((_, i) => i !== index);
     setLocationNames(newNames.length > 0 ? newNames : [""]);
   };
 
-  // Update a location name
   const updateLocationName = (index, value) => {
     const newNames = [...locationNames];
     newNames[index] = value;
@@ -427,12 +376,12 @@ function App() {
       return;
     }
     
-    const hasLocation = location.trim();
-    const hasRegion = region;
-    const hasLocationNames = locationNames.some(name => name.trim());
+    const hasLocation = location.trim() && searchTab === "location";
+    const hasRegion = region && searchTab === "region";
+    const hasLocationNames = locationNames.some(name => name.trim()) && searchTab === "specific";
     
     if (!hasLocation && !hasRegion && !hasLocationNames) {
-      toast.error("Please enter a location, select a region, or add specific location names");
+      toast.error("Please provide a search location");
       return;
     }
 
@@ -440,12 +389,12 @@ function App() {
     setSearched(true);
 
     try {
-      const filteredLocationNames = locationNames.filter(name => name.trim());
+      const filteredLocationNames = searchTab === "specific" ? locationNames.filter(name => name.trim()) : [];
       
       const response = await axios.post(`${API}/places/search`, {
         category,
-        location: location.trim(),
-        region,
+        location: searchTab === "location" ? location.trim() : "",
+        region: searchTab === "region" ? region : "",
         location_names: filteredLocationNames,
         page,
         per_page: 20
@@ -459,12 +408,11 @@ function App() {
           total: response.data.total
         });
         
-        // On first search, fetch all pages for export
         if (page === 1) {
           fetchAllPagesForExport(response.data.total_pages, filteredLocationNames);
         }
         
-        toast.success(`Found ${response.data.total} locations (showing ${response.data.places.length})`);
+        toast.success(`Found ${response.data.total} locations`);
       }
     } catch (error) {
       console.error("Search error:", error);
@@ -474,17 +422,16 @@ function App() {
     } finally {
       setLoading(false);
     }
-  }, [category, location, region, locationNames]);
+  }, [category, location, region, locationNames, searchTab]);
 
-  // Fetch all pages for CSV export
   const fetchAllPagesForExport = async (totalPages, filteredLocationNames) => {
     try {
       const allResults = [];
       for (let p = 1; p <= totalPages; p++) {
         const response = await axios.post(`${API}/places/search`, {
           category,
-          location: location.trim(),
-          region,
+          location: searchTab === "location" ? location.trim() : "",
+          region: searchTab === "region" ? region : "",
           location_names: filteredLocationNames,
           page: p,
           per_page: 20
@@ -516,24 +463,17 @@ function App() {
     }
 
     try {
-      const response = await axios.post(
-        `${API}/places/export-csv`,
-        dataToExport,
-        { responseType: 'blob' }
-      );
-
-      // Create download link
+      const response = await axios.post(`${API}/places/export-csv`, dataToExport, { responseType: 'blob' });
       const blob = new Blob([response.data], { type: 'text/csv' });
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      const locationPart = location || region || 'multiple';
-      link.download = `locations-${category}-${locationPart.replace(/\s+/g, '-')}.csv`;
+      const locationPart = location || region || 'locations';
+      link.download = `${category}-${locationPart.replace(/\s+/g, '-')}.csv`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
-
       toast.success(`Exported ${dataToExport.length} locations to CSV`);
     } catch (error) {
       console.error("Export error:", error);
@@ -547,235 +487,246 @@ function App() {
     }
   };
 
-  // Clear region when location is entered and vice versa
-  const handleLocationChange = (value) => {
-    setLocation(value);
-  };
-
-  const handleRegionChange = (value) => {
-    const newRegion = value === "none" ? "" : value;
-    setRegion(newRegion);
-    if (newRegion) {
-      setLocation(""); // Clear location when region is selected
-    }
-  };
-
   const selectedCategory = CATEGORIES.find(c => c.id === category);
-  const activeLocationNames = locationNames.filter(name => name.trim()).length;
+  const selectedRegion = region ? US_REGIONS[region] : null;
 
   return (
     <div className="min-h-screen bg-background">
       <Toaster position="top-right" richColors />
       
-      {/* Header / Search Section */}
-      <header className="search-section border-b border-border">
-        <div className="max-w-5xl mx-auto">
-          {/* Title */}
-          <div className="text-center mb-10">
-            <h1 
-              className="heading-primary text-foreground mb-3"
-              data-testid="app-title"
-            >
-              MapData Collector
-            </h1>
-            <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-              Discover and export location data from Google Maps. Select a category and location to get started.
-            </p>
-          </div>
-
-          {/* Main Search Controls */}
-          <div className="space-y-6 max-w-4xl mx-auto">
-            {/* Row 1: Category + Location/Zip */}
-            <div className="flex flex-col sm:flex-row gap-4">
-              {/* Category Select */}
-              <Select value={category} onValueChange={setCategory}>
-                <SelectTrigger 
-                  className="h-12 text-base bg-white border-2 border-border focus:border-primary sm:w-56"
-                  data-testid="category-select"
-                >
-                  <SelectValue placeholder="Select category" />
-                </SelectTrigger>
-                <SelectContent>
-                  {CATEGORIES.map((cat) => {
-                    const Icon = cat.icon;
-                    return (
-                      <SelectItem 
-                        key={cat.id} 
-                        value={cat.id}
-                        data-testid={`category-option-${cat.id}`}
-                      >
-                        <div className="flex items-center gap-2">
-                          <Icon className="w-4 h-4" />
-                          <span>{cat.name}</span>
-                        </div>
-                      </SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
-
-              {/* Location/Zip Input */}
-              <div className="flex-1 relative">
-                <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                <Input
-                  type="text"
-                  placeholder="City, area, or zip code (e.g., Los Angeles, CA or 90210)"
-                  value={location}
-                  onChange={(e) => handleLocationChange(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  className="h-12 pl-12 text-base bg-white border-2 border-border focus:border-primary"
-                  data-testid="location-input"
-                  disabled={!!region}
-                />
+      {/* Header */}
+      <header className="border-b border-border bg-white sticky top-0 z-40">
+        <div className="max-w-6xl mx-auto px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
+                <Map className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h1 className="text-xl font-semibold" style={{ fontFamily: 'IBM Plex Sans, sans-serif' }} data-testid="app-title">
+                  MapData Collector
+                </h1>
+                <p className="text-xs text-muted-foreground">Google Maps Location Scraper</p>
               </div>
             </div>
-
-            {/* Row 2: Region Selector */}
-            <div className="flex flex-col sm:flex-row gap-4 items-start">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground sm:w-56 pt-2">
-                <span>OR search by region:</span>
-              </div>
-              <div className="flex-1">
-                <Select value={region} onValueChange={handleRegionChange}>
-                  <SelectTrigger 
-                    className="h-12 text-base bg-white border-2 border-border focus:border-primary"
-                    data-testid="region-select"
-                  >
-                    <SelectValue placeholder="Select US region (optional)" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none" data-testid="region-option-none">
-                      <span className="text-muted-foreground">No region selected</span>
-                    </SelectItem>
-                    {Object.entries(US_REGIONS).map(([id, data]) => (
-                      <SelectItem 
-                        key={id} 
-                        value={id}
-                        data-testid={`region-option-${id}`}
-                      >
-                        <div className="flex items-center gap-2">
-                          <MapPinned className="w-4 h-4" />
-                          <span>{data.name}</span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                
-                {/* Region States Display */}
-                <RegionStatesDisplay regionId={region} />
-              </div>
-            </div>
-
-            {/* Row 3: Specific Location Names */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">
-                  Specific location names (optional, up to 10):
-                </span>
-                {locationNames.length < 10 && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={addLocationName}
-                    data-testid="add-location-name-btn"
-                  >
-                    <Plus className="w-4 h-4 mr-1" />
-                    Add Location
-                  </Button>
-                )}
-              </div>
-              
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {locationNames.map((name, index) => (
-                  <div key={index} className="flex gap-2">
-                    <Input
-                      type="text"
-                      placeholder={`Location name ${index + 1} (e.g., Central Park)`}
-                      value={name}
-                      onChange={(e) => updateLocationName(index, e.target.value)}
-                      className="h-10 text-sm bg-white border border-border focus:border-primary"
-                      data-testid={`location-name-input-${index}`}
-                    />
-                    {locationNames.length > 1 && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeLocationName(index)}
-                        className="h-10 w-10 p-0 text-muted-foreground hover:text-destructive"
-                        data-testid={`remove-location-name-${index}`}
-                      >
-                        <X className="w-4 h-4" />
-                      </Button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Search Button */}
-            <div className="flex justify-center pt-2">
+            
+            {pagination.total > 0 && (
               <Button
-                onClick={() => handleSearch(1)}
-                disabled={loading}
-                className="h-14 px-12 text-base font-medium bg-primary hover:bg-primary/90"
-                data-testid="search-button"
+                onClick={handleExportCSV}
+                className="bg-foreground text-background hover:bg-foreground/90"
+                data-testid="export-csv-button"
               >
-                {loading ? (
-                  <>
-                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                    Searching...
-                  </>
-                ) : (
-                  <>
-                    <Search className="w-5 h-5 mr-2" />
-                    Search Locations
-                  </>
-                )}
+                <Download className="w-4 h-4 mr-2" />
+                Export CSV ({allPlaces.length || pagination.total})
               </Button>
-            </div>
-
-            {/* Category Description */}
-            {selectedCategory && (
-              <p className="text-center text-sm text-muted-foreground">
-                {selectedCategory.description}
-              </p>
             )}
           </div>
         </div>
       </header>
 
+      {/* Search Section */}
+      <section className="py-12 px-6 bg-gradient-to-b from-secondary/30 to-background">
+        <div className="max-w-4xl mx-auto space-y-8">
+          
+          {/* Step 1: Category Selection */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <span className="w-7 h-7 rounded-full bg-primary text-white text-sm font-medium flex items-center justify-center">1</span>
+              <h2 className="text-lg font-medium" style={{ fontFamily: 'IBM Plex Sans, sans-serif' }}>Choose Experience Category</h2>
+            </div>
+            
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+              {CATEGORIES.map((cat) => {
+                const Icon = cat.icon;
+                const isSelected = category === cat.id;
+                return (
+                  <button
+                    key={cat.id}
+                    onClick={() => setCategory(cat.id)}
+                    className={`relative p-4 rounded-xl border-2 transition-all duration-200 text-left group ${
+                      isSelected 
+                        ? 'border-primary bg-primary/5 shadow-md' 
+                        : 'border-border bg-white hover:border-primary/50 hover:shadow-sm'
+                    }`}
+                    data-testid={`category-btn-${cat.id}`}
+                  >
+                    <div className={`w-10 h-10 rounded-lg ${cat.color} flex items-center justify-center mb-3 transition-transform group-hover:scale-110`}>
+                      <Icon className="w-5 h-5 text-white" />
+                    </div>
+                    <p className="font-medium text-sm mb-1">{cat.name}</p>
+                    <p className="text-xs text-muted-foreground line-clamp-2">{cat.description}</p>
+                    {isSelected && (
+                      <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-primary flex items-center justify-center">
+                        <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                        </svg>
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Step 2: Search Method */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <span className="w-7 h-7 rounded-full bg-primary text-white text-sm font-medium flex items-center justify-center">2</span>
+              <h2 className="text-lg font-medium" style={{ fontFamily: 'IBM Plex Sans, sans-serif' }}>Select Search Method</h2>
+            </div>
+
+            <Tabs value={searchTab} onValueChange={setSearchTab} className="w-full">
+              <TabsList className="grid w-full grid-cols-3 h-12 p-1 bg-secondary/50">
+                <TabsTrigger value="location" className="data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-lg" data-testid="tab-location">
+                  <MapPin className="w-4 h-4 mr-2" />
+                  City / Zip
+                </TabsTrigger>
+                <TabsTrigger value="region" className="data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-lg" data-testid="tab-region">
+                  <Navigation className="w-4 h-4 mr-2" />
+                  US Region
+                </TabsTrigger>
+                <TabsTrigger value="specific" className="data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-lg" data-testid="tab-specific">
+                  <Building2 className="w-4 h-4 mr-2" />
+                  Specific Places
+                </TabsTrigger>
+              </TabsList>
+
+              <div className="mt-4 p-6 bg-white rounded-xl border border-border shadow-sm">
+                <TabsContent value="location" className="mt-0 space-y-4">
+                  <div className="relative">
+                    <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                    <Input
+                      type="text"
+                      placeholder="Enter city, area, or zip code (e.g., Los Angeles, CA or 90210)"
+                      value={location}
+                      onChange={(e) => setLocation(e.target.value)}
+                      onKeyPress={handleKeyPress}
+                      className="h-14 pl-12 text-base border-2 focus:border-primary"
+                      data-testid="location-input"
+                    />
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="region" className="mt-0 space-y-4">
+                  <Select value={region} onValueChange={setRegion}>
+                    <SelectTrigger className="h-14 text-base border-2 focus:border-primary" data-testid="region-select">
+                      <SelectValue placeholder="Select a US region" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(US_REGIONS).map(([id, data]) => (
+                        <SelectItem key={id} value={id} data-testid={`region-option-${id}`}>
+                          <div className="flex items-center gap-2">
+                            <Navigation className="w-4 h-4" />
+                            <span>{data.name}</span>
+                            <span className="text-xs text-muted-foreground">({data.states.length} states)</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  
+                  {selectedRegion && (
+                    <div className="p-4 bg-secondary/30 rounded-lg" data-testid="region-states-display">
+                      <p className="text-sm font-medium mb-2">{selectedRegion.name} includes:</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {selectedRegion.states.map((state) => (
+                          <Badge key={state} variant="secondary" className="text-xs font-normal">
+                            {state}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="specific" className="mt-0 space-y-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-sm text-muted-foreground">Add specific locations to search (up to 10)</p>
+                    {locationNames.length < 10 && (
+                      <Button variant="outline" size="sm" onClick={addLocationName} data-testid="add-location-name-btn">
+                        <Plus className="w-4 h-4 mr-1" />
+                        Add
+                      </Button>
+                    )}
+                  </div>
+                  
+                  <div className="space-y-2">
+                    {locationNames.map((name, index) => (
+                      <div key={index} className="flex gap-2">
+                        <div className="relative flex-1">
+                          <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                          <Input
+                            type="text"
+                            placeholder={`Location ${index + 1} (e.g., Central Park, NYC)`}
+                            value={name}
+                            onChange={(e) => updateLocationName(index, e.target.value)}
+                            className="h-11 pl-10 text-sm border focus:border-primary"
+                            data-testid={`location-name-input-${index}`}
+                          />
+                        </div>
+                        {locationNames.length > 1 && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => removeLocationName(index)}
+                            className="h-11 w-11 text-muted-foreground hover:text-destructive"
+                            data-testid={`remove-location-name-${index}`}
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </TabsContent>
+              </div>
+            </Tabs>
+          </div>
+
+          {/* Search Button */}
+          <div className="flex justify-center">
+            <Button
+              onClick={() => handleSearch(1)}
+              disabled={loading || !category}
+              size="lg"
+              className="h-14 px-12 text-base font-medium bg-primary hover:bg-primary/90 shadow-lg hover:shadow-xl transition-all"
+              data-testid="search-button"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                  Searching...
+                </>
+              ) : (
+                <>
+                  <Search className="w-5 h-5 mr-2" />
+                  Search Locations
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+      </section>
+
       {/* Results Section */}
       <main>
-        {/* Stats Bar */}
         {searched && pagination.total > 0 && (
-          <div className="stats-bar" data-testid="stats-bar">
-            <div className="max-w-7xl mx-auto w-full flex items-center justify-between">
-              <div className="flex items-center gap-4 flex-wrap">
-                <span className="font-medium" style={{ fontFamily: 'IBM Plex Sans, sans-serif' }}>
-                  {pagination.total} locations found
+          <div className="border-y border-border bg-white py-4 px-6" data-testid="stats-bar">
+            <div className="max-w-7xl mx-auto flex items-center justify-between flex-wrap gap-4">
+              <div className="flex items-center gap-3 flex-wrap">
+                <span className="font-semibold text-lg" style={{ fontFamily: 'IBM Plex Sans, sans-serif' }}>
+                  {pagination.total} locations
                 </span>
                 {selectedCategory && (
-                  <Badge variant="outline" className={selectedCategory.color}>
+                  <Badge className={`${selectedCategory.color} text-white border-0`}>
                     {selectedCategory.name}
                   </Badge>
                 )}
-                {location && (
-                  <span className="text-sm text-muted-foreground">
-                    in {location}
-                  </span>
+                {searchTab === "location" && location && (
+                  <span className="text-muted-foreground">in {location}</span>
                 )}
-                {region && (
-                  <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                    {US_REGIONS[region]?.name}
-                  </Badge>
-                )}
-                {activeLocationNames > 0 && (
-                  <span className="text-sm text-muted-foreground">
-                    + {activeLocationNames} specific location{activeLocationNames > 1 ? 's' : ''}
-                  </span>
+                {searchTab === "region" && selectedRegion && (
+                  <Badge variant="outline">{selectedRegion.name}</Badge>
                 )}
               </div>
               <span className="text-sm text-muted-foreground">
@@ -785,22 +736,17 @@ function App() {
           </div>
         )}
 
-        {/* Results Grid or States */}
         <div className="max-w-7xl mx-auto">
           {loading ? (
             <LoadingSkeleton />
           ) : places.length > 0 ? (
             <>
-              <div 
-                className="results-grid border-t border-l border-border"
-                data-testid="results-grid"
-              >
+              <div className="results-grid border-t border-l border-border" data-testid="results-grid">
                 {places.map((place, index) => (
                   <LocationCard key={place.id || index} place={place} index={index} />
                 ))}
               </div>
               
-              {/* Pagination */}
               {pagination.totalPages > 1 && (
                 <Pagination
                   page={pagination.page}
@@ -819,7 +765,7 @@ function App() {
                 No locations found
               </h3>
               <p className="text-muted-foreground max-w-md">
-                No locations with complete data (address, website, and images) were found. Try a different category or location.
+                No locations with complete data found. Try a different search.
               </p>
             </div>
           ) : (
@@ -827,21 +773,6 @@ function App() {
           )}
         </div>
       </main>
-
-      {/* Export Button (Fixed) */}
-      {pagination.total > 0 && (
-        <div className="export-button-container">
-          <Button
-            onClick={handleExportCSV}
-            size="lg"
-            className="shadow-lg hover:shadow-xl transition-shadow bg-foreground text-background hover:bg-foreground/90"
-            data-testid="export-csv-button"
-          >
-            <Download className="w-5 h-5 mr-2" />
-            Export CSV ({allPlaces.length || pagination.total})
-          </Button>
-        </div>
-      )}
     </div>
   );
 }
