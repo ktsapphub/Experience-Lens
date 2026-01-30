@@ -36,8 +36,12 @@ import {
   X,
   Map,
   Navigation,
-  Building2
+  Building2,
+  Check,
+  CheckSquare,
+  Square
 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
