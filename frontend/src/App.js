@@ -562,35 +562,63 @@ function App() {
             </div>
             
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-              {CATEGORIES.map((cat) => {
-                const Icon = cat.icon;
-                const isSelected = category === cat.id;
-                return (
-                  <button
-                    key={cat.id}
-                    onClick={() => setCategory(cat.id)}
-                    className={`relative p-4 rounded-xl border-2 transition-all duration-200 text-left group ${
-                      isSelected 
-                        ? 'border-primary bg-primary/5 shadow-md' 
-                        : 'border-border bg-white hover:border-primary/50 hover:shadow-sm'
-                    }`}
-                    data-testid={`category-btn-${cat.id}`}
-                  >
-                    <div className={`w-10 h-10 rounded-lg ${cat.color} flex items-center justify-center mb-3 transition-transform group-hover:scale-110`}>
-                      <Icon className="w-5 h-5 text-white" />
-                    </div>
-                    <p className="font-medium text-sm mb-1">{cat.name}</p>
-                    <p className="text-xs text-muted-foreground line-clamp-2">{cat.description}</p>
-                    {isSelected && (
-                      <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-primary flex items-center justify-center">
-                        <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                        </svg>
-                      </div>
-                    )}
-                  </button>
-                );
-              })}
+              <TooltipProvider delayDuration={200}>
+                {CATEGORIES.map((cat) => {
+                  const Icon = cat.icon;
+                  const isSelected = category === cat.id;
+                  return (
+                    <Tooltip key={cat.id}>
+                      <TooltipTrigger asChild>
+                        <button
+                          onClick={() => setCategory(cat.id)}
+                          className={`relative p-4 rounded-xl border-2 transition-all duration-200 text-left group ${
+                            isSelected 
+                              ? 'border-primary bg-primary/5 shadow-md' 
+                              : 'border-border bg-white hover:border-primary/50 hover:shadow-sm'
+                          }`}
+                          data-testid={`category-btn-${cat.id}`}
+                        >
+                          <div className={`w-10 h-10 rounded-lg ${cat.color} flex items-center justify-center mb-3 transition-transform group-hover:scale-110`}>
+                            <Icon className="w-5 h-5 text-white" />
+                          </div>
+                          <p className="font-medium text-sm mb-1">{cat.name}</p>
+                          <p className="text-xs text-muted-foreground line-clamp-2">{cat.description}</p>
+                          {isSelected && (
+                            <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-primary flex items-center justify-center">
+                              <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                              </svg>
+                            </div>
+                          )}
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent 
+                        side="bottom" 
+                        className="max-w-xs p-4 bg-foreground text-background rounded-lg shadow-xl"
+                        sideOffset={8}
+                      >
+                        <div className="space-y-2">
+                          <p className="font-semibold text-sm">{cat.tooltip.title}</p>
+                          <p className="text-xs opacity-90 leading-relaxed">{cat.tooltip.description}</p>
+                          <div className="pt-2 border-t border-white/20">
+                            <p className="text-xs font-medium mb-1.5 opacity-70">Search keywords:</p>
+                            <div className="flex flex-wrap gap-1">
+                              {cat.tooltip.keywords.map((keyword) => (
+                                <span 
+                                  key={keyword}
+                                  className="px-2 py-0.5 bg-white/15 rounded text-xs"
+                                >
+                                  {keyword}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </TooltipContent>
+                    </Tooltip>
+                  );
+                })}
+              </TooltipProvider>
             </div>
           </div>
 
