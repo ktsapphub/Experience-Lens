@@ -621,13 +621,13 @@ function App() {
     let dataToExport;
     
     if (exportType === 'selected') {
-      dataToExport = allPlaces.filter(p => selectedIds.has(p.id));
+      dataToExport = visibleAllPlaces.filter(p => selectedIds.has(p.id));
       if (dataToExport.length === 0) {
         toast.error("No locations selected for export");
         return;
       }
     } else {
-      dataToExport = allPlaces.length > 0 ? allPlaces : places;
+      dataToExport = visibleAllPlaces.length > 0 ? visibleAllPlaces : visiblePlaces;
       if (dataToExport.length === 0) {
         toast.error("No locations to export");
         return;
@@ -652,7 +652,7 @@ function App() {
       console.error("Export error:", error);
       toast.error("Failed to export CSV");
     }
-  }, [places, allPlaces, category, location, region, selectedIds]);
+  }, [visiblePlaces, visibleAllPlaces, category, location, region, selectedIds]);
 
   const handleKeyPress = (e) => {
     if (e.key === 'Enter') {
