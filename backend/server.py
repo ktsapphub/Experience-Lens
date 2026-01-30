@@ -278,46 +278,46 @@ async def search_places(request: SearchRequest):
                     address = place.get("formattedAddress", "")
                     if not address or address == "Address not available":
                         continue
-                
-                # Build photo URLs (up to 3)
-                photos = []
-                for photo in photos_data[:3]:
-                    photo_name = photo.get("name", "")
-                    if photo_name:
-                        photo_url = f"https://places.googleapis.com/v1/{photo_name}/media?maxHeightPx=400&maxWidthPx=600&key={GOOGLE_PLACES_API_KEY}"
-                        photos.append(Photo(url=photo_url, height=400, width=600))
-                
-                # Get location coordinates
-                location = place.get("location", {})
-                
-                # Get description from editorial summary
-                editorial = place.get("editorialSummary", {})
-                description = editorial.get("text", "") if editorial else ""
-                
-                place_result = PlaceResult(
-                    id=place.get("id", str(uuid.uuid4())),
-                    name=place.get("displayName", {}).get("text", "Unknown"),
-                    address=address,
-                    latitude=location.get("latitude", 0),
-                    longitude=location.get("longitude", 0),
-                    website=website,
-                    instagram=extract_instagram(place),
-                    description=description,
-                    photos=photos,
-                    rating=place.get("rating"),
-                    category=request.category
-                )
-                
-                # Deduplication check by ID and name+address
-                place_id = place.get("id")
-                name_addr_key = f"{place_result.name}|{place_result.address}".lower()
-                
-                if place_id in seen_ids or name_addr_key in seen_names_addresses:
-                    continue
-                
-                seen_ids.add(place_id)
-                seen_names_addresses.add(name_addr_key)
-                all_places.append(place_result)
+                    
+                    # Build photo URLs (up to 3)
+                    photos = []
+                    for photo in photos_data[:3]:
+                        photo_name = photo.get("name", "")
+                        if photo_name:
+                            photo_url = f"https://places.googleapis.com/v1/{photo_name}/media?maxHeightPx=400&maxWidthPx=600&key={GOOGLE_PLACES_API_KEY}"
+                            photos.append(Photo(url=photo_url, height=400, width=600))
+                    
+                    # Get location coordinates
+                    location = place.get("location", {})
+                    
+                    # Get description from editorial summary
+                    editorial = place.get("editorialSummary", {})
+                    description = editorial.get("text", "") if editorial else ""
+                    
+                    place_result = PlaceResult(
+                        id=place.get("id", str(uuid.uuid4())),
+                        name=place.get("displayName", {}).get("text", "Unknown"),
+                        address=address,
+                        latitude=location.get("latitude", 0),
+                        longitude=location.get("longitude", 0),
+                        website=website,
+                        instagram=extract_instagram(place),
+                        description=description,
+                        photos=photos,
+                        rating=place.get("rating"),
+                        category=request.category
+                    )
+                    
+                    # Deduplication check by ID and name+address
+                    place_id = place.get("id")
+                    name_addr_key = f"{place_result.name}|{place_result.address}".lower()
+                    
+                    if place_id in seen_ids or name_addr_key in seen_names_addresses:
+                        continue
+                    
+                    seen_ids.add(place_id)
+                    seen_names_addresses.add(name_addr_key)
+                    all_places.append(place_result)
             
             # Make additional searches with specific place types to get more results
             place_types = CATEGORY_TYPES.get(request.category, [])
