@@ -432,8 +432,8 @@ function Pagination({ page, totalPages, onPageChange, disabled }) {
   );
 }
 
-// Main App Component
-function App() {
+// Search Page Component
+function SearchPage() {
   const [category, setCategory] = useState("");
   const [searchTab, setSearchTab] = useState("location");
   const [location, setLocation] = useState("");
