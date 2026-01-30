@@ -80,9 +80,36 @@ class PlaceResult(BaseModel):
 
 class SearchRequest(BaseModel):
     category: str
-    location: str
+    location: str = ""  # City, area, or zip code
+    region: str = ""  # Optional region filter
+    location_names: List[str] = []  # Optional specific location names (up to 10)
     page: int = 1
     per_page: int = 20
+
+
+# US Regions mapping
+US_REGIONS = {
+    "northeast": {
+        "name": "Northeast Region",
+        "states": ["Connecticut", "Maine", "Massachusetts", "New Hampshire", "Rhode Island", "Vermont", "New Jersey", "New York", "Pennsylvania"]
+    },
+    "southeast": {
+        "name": "Southeast Region", 
+        "states": ["Alabama", "Florida", "Georgia", "Kentucky", "Mississippi", "North Carolina", "South Carolina", "Tennessee", "Virginia", "West Virginia", "Maryland", "Delaware", "District of Columbia"]
+    },
+    "midwest": {
+        "name": "Midwest Region",
+        "states": ["Illinois", "Indiana", "Michigan", "Ohio", "Wisconsin", "Iowa", "Kansas", "Minnesota", "Missouri", "Nebraska", "North Dakota", "South Dakota"]
+    },
+    "southwest": {
+        "name": "Southwest Region",
+        "states": ["Arizona", "Arkansas", "Louisiana", "New Mexico", "Oklahoma", "Texas"]
+    },
+    "west_coast": {
+        "name": "West Coast Region",
+        "states": ["California", "Oregon", "Washington", "Nevada", "Idaho", "Montana", "Utah", "Wyoming", "Colorado", "Alaska", "Hawaii"]
+    }
+}
 
 
 class SearchResponse(BaseModel):
