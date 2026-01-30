@@ -563,9 +563,17 @@ function App() {
           total: response.data.total
         });
         
+        // Reset removals on new search
         if (page === 1) {
+          setRemovedIds(new Set());
           fetchAllPagesForExport(response.data.total_pages, filteredLocationNames);
         }
+        
+        // Mark current page locations as seen after 3 seconds
+        setTimeout(() => {
+          const placeIds = response.data.places.map(p => p.id);
+          markAsSeen(placeIds);
+        }, 3000);
         
         toast.success(`Found ${response.data.total} locations`);
       }
