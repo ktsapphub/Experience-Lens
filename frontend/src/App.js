@@ -390,11 +390,42 @@ function App() {
   const [allPlaces, setAllPlaces] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
+  const [selectedIds, setSelectedIds] = useState(new Set());
   const [pagination, setPagination] = useState({
     page: 1,
     totalPages: 1,
     total: 0
   });
+
+  // Toggle selection of a single place
+  const toggleSelection = (placeId) => {
+    setSelectedIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(placeId)) {
+        newSet.delete(placeId);
+      } else {
+        newSet.add(placeId);
+      }
+      return newSet;
+    });
+  };
+
+  // Select all visible places
+  const selectAllVisible = () => {
+    const allIds = new Set(places.map(p => p.id));
+    setSelectedIds(allIds);
+  };
+
+  // Deselect all
+  const deselectAll = () => {
+    setSelectedIds(new Set());
+  };
+
+  // Select all from all pages
+  const selectAll = () => {
+    const allIds = new Set(allPlaces.map(p => p.id));
+    setSelectedIds(allIds);
+  };
 
   const addLocationName = () => {
     if (locationNames.length < 10) {
