@@ -1090,4 +1090,18 @@ function App() {
   );
 }
 
+// Main App with Router
+function App() {
+  return (
+    <Router>
+      <Toaster position="top-right" richColors />
+      <Routes>
+        <Route path="/" element={<SearchPage />} />
+        <Route path="/history" element={<HistoryPage />} />
+        <Route path="/config" element={<ConfigPage />} />
+      </Routes>
+    </Router>
+  );
+}
+
 export default App;
