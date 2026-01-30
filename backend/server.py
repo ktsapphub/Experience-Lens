@@ -6,13 +6,14 @@ from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
 from pathlib import Path
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, EmailStr
 from typing import List, Optional
 import uuid
 from datetime import datetime, timezone
 import httpx
 import csv
 import io
+from passlib.context import CryptContext
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -24,6 +25,9 @@ db = client[os.environ['DB_NAME']]
 
 # Google Places API key
 GOOGLE_PLACES_API_KEY = os.environ.get('GOOGLE_PLACES_API_KEY', '')
+
+# Password hashing
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # Create the main app without a prefix
 app = FastAPI()
