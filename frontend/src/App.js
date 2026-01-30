@@ -149,7 +149,7 @@ const CATEGORY_IMAGES = {
 };
 
 // Location Card Component
-function LocationCard({ place, index }) {
+function LocationCard({ place, index, isSelected, onSelect }) {
   const [imageError, setImageError] = useState({});
   const category = CATEGORIES.find(c => c.id === place.category);
   const CategoryIcon = category?.icon || MapPin;
@@ -162,10 +162,23 @@ function LocationCard({ place, index }) {
 
   return (
     <Card 
-      className="stagger-item card-hover border-r border-b border-border rounded-none"
+      className={`stagger-item card-hover border-r border-b border-border rounded-none relative ${isSelected ? 'ring-2 ring-primary ring-inset' : ''}`}
       style={{ animationDelay: `${index * 0.05}s` }}
       data-testid={`location-card-${index}`}
     >
+      {/* Selection Checkbox */}
+      <div 
+        className="absolute top-3 left-3 z-10"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <Checkbox
+          checked={isSelected}
+          onCheckedChange={() => onSelect(place.id)}
+          className="h-5 w-5 bg-white/90 backdrop-blur-sm border-2 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+          data-testid={`select-location-${index}`}
+        />
+      </div>
+
       <div className="relative h-48 bg-secondary overflow-hidden">
         {imageError.main ? (
           <div className="w-full h-full flex items-center justify-center bg-secondary">
