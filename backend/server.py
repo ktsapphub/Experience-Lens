@@ -396,6 +396,8 @@ async def search_places(request: SearchRequest):
             "id": str(uuid.uuid4()),
             "category": request.category,
             "location": request.location,
+            "region": request.region,
+            "location_names": location_names,
             "results_count": len(all_places),
             "timestamp": datetime.now(timezone.utc).isoformat()
         }
