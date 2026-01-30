@@ -29,7 +29,10 @@ import {
   ExternalLink,
   ImageOff,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Plus,
+  X,
+  MapPinned
 } from "lucide-react";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -73,6 +76,30 @@ const CATEGORIES = [
     color: "bg-amber-100 text-amber-800 border-amber-200"
   }
 ];
+
+// US Regions configuration
+const US_REGIONS = {
+  northeast: {
+    name: "Northeast Region",
+    states: ["Connecticut", "Maine", "Massachusetts", "New Hampshire", "Rhode Island", "Vermont", "New Jersey", "New York", "Pennsylvania"]
+  },
+  southeast: {
+    name: "Southeast Region",
+    states: ["Alabama", "Florida", "Georgia", "Kentucky", "Mississippi", "North Carolina", "South Carolina", "Tennessee", "Virginia", "West Virginia", "Maryland", "Delaware", "District of Columbia"]
+  },
+  midwest: {
+    name: "Midwest Region",
+    states: ["Illinois", "Indiana", "Michigan", "Ohio", "Wisconsin", "Iowa", "Kansas", "Minnesota", "Missouri", "Nebraska", "North Dakota", "South Dakota"]
+  },
+  southwest: {
+    name: "Southwest Region",
+    states: ["Arizona", "Arkansas", "Louisiana", "New Mexico", "Oklahoma", "Texas"]
+  },
+  west_coast: {
+    name: "West Coast Region",
+    states: ["California", "Oregon", "Washington", "Nevada", "Idaho", "Montana", "Utah", "Wyoming", "Colorado", "Alaska", "Hawaii"]
+  }
+};
 
 // Fallback images for categories
 const CATEGORY_IMAGES = {
@@ -336,12 +363,36 @@ function Pagination({ page, totalPages, onPageChange, disabled }) {
   );
 }
 
+// Region States Display Component
+function RegionStatesDisplay({ regionId }) {
+  if (!regionId || !US_REGIONS[regionId]) return null;
+  
+  const region = US_REGIONS[regionId];
+  
+  return (
+    <div className="mt-4 p-4 bg-secondary/50 rounded-lg border border-border" data-testid="region-states-display">
+      <h4 className="text-sm font-medium mb-2 text-foreground" style={{ fontFamily: 'IBM Plex Sans, sans-serif' }}>
+        {region.name} includes:
+      </h4>
+      <div className="flex flex-wrap gap-2">
+        {region.states.map((state) => (
+          <Badge key={state} variant="outline" className="text-xs bg-white">
+            {state}
+          </Badge>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // Main App Component
 function App() {
   const [category, setCategory] = useState("");
   const [location, setLocation] = useState("");
+  const [region, setRegion] = useState("");
+  const [locationNames, setLocationNames] = useState([""]);
   const [places, setPlaces] = useState([]);
-  const [allPlaces, setAllPlaces] = useState([]); // Store all places for CSV export
+  const [allPlaces, setAllPlaces] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
   const [pagination, setPagination] = useState({
@@ -350,13 +401,38 @@ function App() {
     total: 0
   });
 
+  // Add a new location name field
+  const addLocationName = () => {
+    if (locationNames.length < 10) {
+      setLocationNames([...locationNames, ""]);
+    }
+  };
+
+  // Remove a location name field
+  const removeLocationName = (index) => {
+    const newNames = locationNames.filter((_, i) => i !== index);
+    setLocationNames(newNames.length > 0 ? newNames : [""]);
+  };
+
+  // Update a location name
+  const updateLocationName = (index, value) => {
+    const newNames = [...locationNames];
+    newNames[index] = value;
+    setLocationNames(newNames);
+  };
+
   const handleSearch = useCallback(async (page = 1) => {
     if (!category) {
       toast.error("Please select a category");
       return;
     }
-    if (!location.trim()) {
-      toast.error("Please enter a location");
+    
+    const hasLocation = location.trim();
+    const hasRegion = region;
+    const hasLocationNames = locationNames.some(name => name.trim());
+    
+    if (!hasLocation && !hasRegion && !hasLocationNames) {
+      toast.error("Please enter a location, select a region, or add specific location names");
       return;
     }
 
@@ -364,9 +440,13 @@ function App() {
     setSearched(true);
 
     try {
+      const filteredLocationNames = locationNames.filter(name => name.trim());
+      
       const response = await axios.post(`${API}/places/search`, {
         category,
         location: location.trim(),
+        region,
+        location_names: filteredLocationNames,
         page,
         per_page: 20
       });
@@ -379,10 +459,9 @@ function App() {
           total: response.data.total
         });
         
-        // On first search, store reference for CSV export
+        // On first search, fetch all pages for export
         if (page === 1) {
-          // Fetch all pages for export in background
-          fetchAllPagesForExport(response.data.total_pages);
+          fetchAllPagesForExport(response.data.total_pages, filteredLocationNames);
         }
         
         toast.success(`Found ${response.data.total} locations (showing ${response.data.places.length})`);
@@ -395,16 +474,18 @@ function App() {
     } finally {
       setLoading(false);
     }
-  }, [category, location]);
+  }, [category, location, region, locationNames]);
 
   // Fetch all pages for CSV export
-  const fetchAllPagesForExport = async (totalPages) => {
+  const fetchAllPagesForExport = async (totalPages, filteredLocationNames) => {
     try {
       const allResults = [];
       for (let p = 1; p <= totalPages; p++) {
         const response = await axios.post(`${API}/places/search`, {
           category,
           location: location.trim(),
+          region,
+          location_names: filteredLocationNames,
           page: p,
           per_page: 20
         });
@@ -415,7 +496,7 @@ function App() {
       setAllPlaces(allResults);
     } catch (error) {
       console.error("Error fetching all pages:", error);
-      setAllPlaces(places); // Fallback to current page
+      setAllPlaces(places);
     }
   };
 
@@ -446,7 +527,8 @@ function App() {
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `locations-${category}-${location.replace(/\s+/g, '-')}.csv`;
+      const locationPart = location || region || 'multiple';
+      link.download = `locations-${category}-${locationPart.replace(/\s+/g, '-')}.csv`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -457,7 +539,7 @@ function App() {
       console.error("Export error:", error);
       toast.error("Failed to export CSV");
     }
-  }, [places, allPlaces, category, location]);
+  }, [places, allPlaces, category, location, region]);
 
   const handleKeyPress = (e) => {
     if (e.key === 'Enter') {
@@ -465,7 +547,20 @@ function App() {
     }
   };
 
+  // Clear region when location is entered and vice versa
+  const handleLocationChange = (value) => {
+    setLocation(value);
+  };
+
+  const handleRegionChange = (value) => {
+    setRegion(value);
+    if (value) {
+      setLocation(""); // Clear location when region is selected
+    }
+  };
+
   const selectedCategory = CATEGORIES.find(c => c.id === category);
+  const activeLocationNames = locationNames.filter(name => name.trim()).length;
 
   return (
     <div className="min-h-screen bg-background">
@@ -475,7 +570,7 @@ function App() {
       <header className="search-section border-b border-border">
         <div className="max-w-5xl mx-auto">
           {/* Title */}
-          <div className="text-center mb-12">
+          <div className="text-center mb-10">
             <h1 
               className="heading-primary text-foreground mb-3"
               data-testid="app-title"
@@ -487,76 +582,167 @@ function App() {
             </p>
           </div>
 
-          {/* Search Controls */}
-          <div className="flex flex-col sm:flex-row gap-4 max-w-3xl mx-auto">
-            {/* Category Select */}
-            <Select value={category} onValueChange={setCategory}>
-              <SelectTrigger 
-                className="h-14 text-base bg-white border-2 border-border focus:border-primary sm:w-64"
-                data-testid="category-select"
-              >
-                <SelectValue placeholder="Select category" />
-              </SelectTrigger>
-              <SelectContent>
-                {CATEGORIES.map((cat) => {
-                  const Icon = cat.icon;
-                  return (
-                    <SelectItem 
-                      key={cat.id} 
-                      value={cat.id}
-                      data-testid={`category-option-${cat.id}`}
-                    >
-                      <div className="flex items-center gap-2">
-                        <Icon className="w-4 h-4" />
-                        <span>{cat.name}</span>
-                      </div>
-                    </SelectItem>
-                  );
-                })}
-              </SelectContent>
-            </Select>
+          {/* Main Search Controls */}
+          <div className="space-y-6 max-w-4xl mx-auto">
+            {/* Row 1: Category + Location/Zip */}
+            <div className="flex flex-col sm:flex-row gap-4">
+              {/* Category Select */}
+              <Select value={category} onValueChange={setCategory}>
+                <SelectTrigger 
+                  className="h-12 text-base bg-white border-2 border-border focus:border-primary sm:w-56"
+                  data-testid="category-select"
+                >
+                  <SelectValue placeholder="Select category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {CATEGORIES.map((cat) => {
+                    const Icon = cat.icon;
+                    return (
+                      <SelectItem 
+                        key={cat.id} 
+                        value={cat.id}
+                        data-testid={`category-option-${cat.id}`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <Icon className="w-4 h-4" />
+                          <span>{cat.name}</span>
+                        </div>
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
 
-            {/* Location Input */}
-            <div className="flex-1 relative">
-              <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-              <Input
-                type="text"
-                placeholder="Enter city or area (e.g., Los Angeles, CA)"
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                onKeyPress={handleKeyPress}
-                className="h-14 pl-12 text-base bg-white border-2 border-border focus:border-primary"
-                data-testid="location-input"
-              />
+              {/* Location/Zip Input */}
+              <div className="flex-1 relative">
+                <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                <Input
+                  type="text"
+                  placeholder="City, area, or zip code (e.g., Los Angeles, CA or 90210)"
+                  value={location}
+                  onChange={(e) => handleLocationChange(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  className="h-12 pl-12 text-base bg-white border-2 border-border focus:border-primary"
+                  data-testid="location-input"
+                  disabled={!!region}
+                />
+              </div>
+            </div>
+
+            {/* Row 2: Region Selector */}
+            <div className="flex flex-col sm:flex-row gap-4 items-start">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground sm:w-56 pt-2">
+                <span>OR search by region:</span>
+              </div>
+              <div className="flex-1">
+                <Select value={region} onValueChange={handleRegionChange}>
+                  <SelectTrigger 
+                    className="h-12 text-base bg-white border-2 border-border focus:border-primary"
+                    data-testid="region-select"
+                  >
+                    <SelectValue placeholder="Select US region (optional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">
+                      <span className="text-muted-foreground">No region selected</span>
+                    </SelectItem>
+                    {Object.entries(US_REGIONS).map(([id, data]) => (
+                      <SelectItem 
+                        key={id} 
+                        value={id}
+                        data-testid={`region-option-${id}`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <MapPinned className="w-4 h-4" />
+                          <span>{data.name}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                
+                {/* Region States Display */}
+                <RegionStatesDisplay regionId={region} />
+              </div>
+            </div>
+
+            {/* Row 3: Specific Location Names */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">
+                  Specific location names (optional, up to 10):
+                </span>
+                {locationNames.length < 10 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={addLocationName}
+                    data-testid="add-location-name-btn"
+                  >
+                    <Plus className="w-4 h-4 mr-1" />
+                    Add Location
+                  </Button>
+                )}
+              </div>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {locationNames.map((name, index) => (
+                  <div key={index} className="flex gap-2">
+                    <Input
+                      type="text"
+                      placeholder={`Location name ${index + 1} (e.g., Central Park)`}
+                      value={name}
+                      onChange={(e) => updateLocationName(index, e.target.value)}
+                      className="h-10 text-sm bg-white border border-border focus:border-primary"
+                      data-testid={`location-name-input-${index}`}
+                    />
+                    {locationNames.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeLocationName(index)}
+                        className="h-10 w-10 p-0 text-muted-foreground hover:text-destructive"
+                        data-testid={`remove-location-name-${index}`}
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
 
             {/* Search Button */}
-            <Button
-              onClick={() => handleSearch(1)}
-              disabled={loading}
-              className="h-14 px-8 text-base font-medium bg-primary hover:bg-primary/90"
-              data-testid="search-button"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                  Searching...
-                </>
-              ) : (
-                <>
-                  <Search className="w-5 h-5 mr-2" />
-                  Search
-                </>
-              )}
-            </Button>
-          </div>
+            <div className="flex justify-center pt-2">
+              <Button
+                onClick={() => handleSearch(1)}
+                disabled={loading}
+                className="h-14 px-12 text-base font-medium bg-primary hover:bg-primary/90"
+                data-testid="search-button"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                    Searching...
+                  </>
+                ) : (
+                  <>
+                    <Search className="w-5 h-5 mr-2" />
+                    Search Locations
+                  </>
+                )}
+              </Button>
+            </div>
 
-          {/* Category Description */}
-          {selectedCategory && (
-            <p className="text-center text-sm text-muted-foreground mt-4">
-              {selectedCategory.description}
-            </p>
-          )}
+            {/* Category Description */}
+            {selectedCategory && (
+              <p className="text-center text-sm text-muted-foreground">
+                {selectedCategory.description}
+              </p>
+            )}
+          </div>
         </div>
       </header>
 
@@ -566,7 +752,7 @@ function App() {
         {searched && pagination.total > 0 && (
           <div className="stats-bar" data-testid="stats-bar">
             <div className="max-w-7xl mx-auto w-full flex items-center justify-between">
-              <div className="flex items-center gap-6">
+              <div className="flex items-center gap-4 flex-wrap">
                 <span className="font-medium" style={{ fontFamily: 'IBM Plex Sans, sans-serif' }}>
                   {pagination.total} locations found
                 </span>
@@ -575,9 +761,21 @@ function App() {
                     {selectedCategory.name}
                   </Badge>
                 )}
-                <span className="text-sm text-muted-foreground">
-                  in {location}
-                </span>
+                {location && (
+                  <span className="text-sm text-muted-foreground">
+                    in {location}
+                  </span>
+                )}
+                {region && (
+                  <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                    {US_REGIONS[region]?.name}
+                  </Badge>
+                )}
+                {activeLocationNames > 0 && (
+                  <span className="text-sm text-muted-foreground">
+                    + {activeLocationNames} specific location{activeLocationNames > 1 ? 's' : ''}
+                  </span>
+                )}
               </div>
               <span className="text-sm text-muted-foreground">
                 Page {pagination.page} of {pagination.totalPages}
