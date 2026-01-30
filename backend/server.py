@@ -322,12 +322,17 @@ async def search_places(request: SearchRequest):
             # Make additional searches with specific place types to get more results
             place_types = CATEGORY_TYPES.get(request.category, [])
             
-            for place_type in place_types[:3]:
+            for place_type in place_types[:2]:
                 if len(all_places) >= 60:  # Cap at 60 total results
                     break
                 
+                # Use first search location for additional searches
+                additional_location = search_locations[0] if search_locations else ""
+                if not additional_location:
+                    break
+                    
                 search_payload = {
-                    "textQuery": f"{place_type} in {request.location}",
+                    "textQuery": f"{place_type} in {additional_location}",
                     "maxResultCount": 20
                 }
                 
