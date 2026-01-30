@@ -532,7 +532,7 @@ function App() {
                 <h1 className="text-xl font-semibold" style={{ fontFamily: 'IBM Plex Sans, sans-serif' }} data-testid="app-title">
                   MapData Collector
                 </h1>
-                <p className="text-xs text-muted-foreground">Google Maps Location Scraper</p>
+                <p className="text-xs text-muted-foreground">Smart Google Maps Location Scraper</p>
               </div>
             </div>
             
