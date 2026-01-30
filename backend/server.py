@@ -234,48 +234,50 @@ async def search_places(request: SearchRequest):
         # Get keywords for this category
         keywords = CATEGORY_KEYWORDS.get(request.category, "")
         
+        headers = {
+            "X-Goog-Api-Key": GOOGLE_PLACES_API_KEY,
+            "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.location,places.websiteUri,places.rating,places.photos,places.editorialSummary,places.types"
+        }
+        
         async with httpx.AsyncClient(timeout=30.0) as http_client:
-            # Use Text Search API (New) for better results
-            search_payload = {
-                "textQuery": f"{keywords} in {request.location}",
-                "maxResultCount": 20
-            }
-            
-            headers = {
-                "X-Goog-Api-Key": GOOGLE_PLACES_API_KEY,
-                "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.location,places.websiteUri,places.rating,places.photos,places.editorialSummary,places.types"
-            }
-            
-            response = await http_client.post(
-                "https://places.googleapis.com/v1/places:searchText",
-                json=search_payload,
-                headers=headers
-            )
-            
-            if response.status_code != 200:
-                logger.error(f"Google API error: {response.status_code} - {response.text}")
-                raise HTTPException(
-                    status_code=502,
-                    detail=f"Google Places API error: {response.text}"
+            # Search across all provided locations
+            for search_location in search_locations:
+                if len(all_places) >= 60:  # Cap total results
+                    break
+                
+                # Use Text Search API (New) for better results
+                search_payload = {
+                    "textQuery": f"{keywords} in {search_location}",
+                    "maxResultCount": 20
+                }
+                
+                response = await http_client.post(
+                    "https://places.googleapis.com/v1/places:searchText",
+                    json=search_payload,
+                    headers=headers
                 )
-            
-            data = response.json()
-            
-            for place in data.get("places", []):
-                # Skip places without photos
-                photos_data = place.get("photos", [])
-                if not photos_data:
+                
+                if response.status_code != 200:
+                    logger.warning(f"Google API error for {search_location}: {response.status_code}")
                     continue
                 
-                # Skip places without website
-                website = place.get("websiteUri")
-                if not website:
-                    continue
+                data = response.json()
                 
-                # Skip places without proper address
-                address = place.get("formattedAddress", "")
-                if not address or address == "Address not available":
-                    continue
+                for place in data.get("places", []):
+                    # Skip places without photos
+                    photos_data = place.get("photos", [])
+                    if not photos_data:
+                        continue
+                    
+                    # Skip places without website
+                    website = place.get("websiteUri")
+                    if not website:
+                        continue
+                    
+                    # Skip places without proper address
+                    address = place.get("formattedAddress", "")
+                    if not address or address == "Address not available":
+                        continue
                 
                 # Build photo URLs (up to 3)
                 photos = []
