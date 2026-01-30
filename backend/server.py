@@ -627,14 +627,33 @@ async def search_places(request: SearchRequest):
                         seen_names_addresses.add(name_addr_key)
                         all_places.append(place_result)
         
-        # Store search in history
+        # Store search in history with results
+        # Determine search method
+        search_method = "location"
+        if request.region:
+            search_method = "region"
+        elif request.location_names and len(request.location_names) > 0:
+            search_method = "specific"
+        
+        # Prepare results for history (text only)
+        history_results = [
+            {
+                "name": p.name,
+                "address": p.address,
+                "website": p.website
+            }
+            for p in all_places
+        ]
+        
         search_history = {
             "id": str(uuid.uuid4()),
             "category": request.category,
+            "search_method": search_method,
             "location": request.location,
             "region": request.region,
             "location_names": location_names,
             "results_count": len(all_places),
+            "results": history_results,
             "timestamp": datetime.now(timezone.utc).isoformat()
         }
         await db.search_history.insert_one(search_history)
