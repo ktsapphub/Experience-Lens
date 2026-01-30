@@ -439,11 +439,35 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
   const [selectedIds, setSelectedIds] = useState(new Set());
+  const [removedIds, setRemovedIds] = useState(new Set());
+  const [seenLocations, setSeenLocations] = useState(() => getSeenLocations());
   const [pagination, setPagination] = useState({
     page: 1,
     totalPages: 1,
     total: 0
   });
+
+  // Filter out removed locations
+  const visiblePlaces = places.filter(p => !removedIds.has(p.id));
+  const visibleAllPlaces = allPlaces.filter(p => !removedIds.has(p.id));
+
+  // Remove a location from results
+  const removeLocation = (placeId) => {
+    setRemovedIds(prev => new Set([...prev, placeId]));
+    // Also remove from selection if selected
+    setSelectedIds(prev => {
+      const newSet = new Set(prev);
+      newSet.delete(placeId);
+      return newSet;
+    });
+    toast.success("Location removed from results");
+  };
+
+  // Undo all removals
+  const undoRemovals = () => {
+    setRemovedIds(new Set());
+    toast.success("All removed locations restored");
+  };
 
   // Toggle selection of a single place
   const toggleSelection = (placeId) => {
@@ -460,7 +484,7 @@ function App() {
 
   // Select all visible places
   const selectAllVisible = () => {
-    const allIds = new Set(places.map(p => p.id));
+    const allIds = new Set(visiblePlaces.map(p => p.id));
     setSelectedIds(allIds);
   };
 
@@ -471,9 +495,18 @@ function App() {
 
   // Select all from all pages
   const selectAll = () => {
-    const allIds = new Set(allPlaces.map(p => p.id));
+    const allIds = new Set(visibleAllPlaces.map(p => p.id));
     setSelectedIds(allIds);
   };
+
+  // Mark locations as seen when search completes
+  const markAsSeen = useCallback((placeIds) => {
+    setSeenLocations(prev => {
+      const newSeen = new Set([...prev, ...placeIds]);
+      saveSeenLocations(newSeen);
+      return newSeen;
+    });
+  }, []);
 
   const addLocationName = () => {
     if (locationNames.length < 10) {
