@@ -1017,7 +1017,7 @@ function App() {
         <div className="max-w-7xl mx-auto">
           {loading ? (
             <LoadingSkeleton />
-          ) : places.length > 0 ? (
+          ) : visiblePlaces.length > 0 ? (
             <>
               <div className="results-grid border-t border-l border-border" data-testid="results-grid">
                 {visiblePlaces.map((place, index) => (
