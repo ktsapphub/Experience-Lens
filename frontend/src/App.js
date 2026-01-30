@@ -39,9 +39,30 @@ import {
   Building2,
   Check,
   CheckSquare,
-  Square
+  Square,
+  Trash2,
+  Eye
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
+
+// Helper to get seen locations from localStorage
+const getSeenLocations = () => {
+  try {
+    const seen = localStorage.getItem('seenLocations');
+    return seen ? new Set(JSON.parse(seen)) : new Set();
+  } catch {
+    return new Set();
+  }
+};
+
+// Helper to save seen locations to localStorage
+const saveSeenLocations = (ids) => {
+  try {
+    localStorage.setItem('seenLocations', JSON.stringify([...ids]));
+  } catch {
+    // Ignore localStorage errors
+  }
+};
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
