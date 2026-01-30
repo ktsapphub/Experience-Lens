@@ -670,22 +670,44 @@ function App() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Toaster position="top-right" richColors />
-      
       {/* Header */}
       <header className="border-b border-border bg-white sticky top-0 z-40">
         <div className="max-w-6xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
-                <Map className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <h1 className="text-xl font-semibold" style={{ fontFamily: 'IBM Plex Sans, sans-serif' }} data-testid="app-title">
-                  MapData Collector
-                </h1>
-                <p className="text-xs text-muted-foreground">Smart Google Maps Location Scraper</p>
-              </div>
+            <div className="flex items-center gap-6">
+              <Link to="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+                <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
+                  <Map className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-xl font-semibold" style={{ fontFamily: 'IBM Plex Sans, sans-serif' }} data-testid="app-title">
+                    MapData Collector
+                  </h1>
+                  <p className="text-xs text-muted-foreground">Smart Google Maps Location Scraper</p>
+                </div>
+              </Link>
+              
+              {/* Navigation */}
+              <nav className="flex items-center gap-1 ml-4">
+                <Link to="/">
+                  <Button variant="ghost" size="sm" className="text-sm">
+                    <Search className="w-4 h-4 mr-1" />
+                    Search
+                  </Button>
+                </Link>
+                <Link to="/history">
+                  <Button variant="ghost" size="sm" className="text-sm">
+                    <Clock className="w-4 h-4 mr-1" />
+                    History
+                  </Button>
+                </Link>
+                <Link to="/config">
+                  <Button variant="ghost" size="sm" className="text-sm">
+                    <Settings className="w-4 h-4 mr-1" />
+                    Config
+                  </Button>
+                </Link>
+              </nav>
             </div>
             
             {pagination.total > 0 && (
