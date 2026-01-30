@@ -189,6 +189,43 @@ async def search_places(request: SearchRequest):
             detail=f"Invalid category. Valid categories: {list(CATEGORY_TYPES.keys())}"
         )
     
+    # Validate at least one location method is provided
+    if not request.location and not request.region and not request.location_names:
+        raise HTTPException(
+            status_code=400,
+            detail="Please provide a location (city/zip), region, or specific location names"
+        )
+    
+    # Limit location names to 10
+    location_names = request.location_names[:10] if request.location_names else []
+    
+    # Build list of locations to search
+    search_locations = []
+    
+    # If specific location names provided, use those
+    if location_names:
+        for loc_name in location_names:
+            if loc_name.strip():
+                search_locations.append(loc_name.strip())
+    
+    # If region is selected, use states from that region
+    if request.region and request.region in US_REGIONS:
+        region_states = US_REGIONS[request.region]["states"]
+        # Pick representative cities/states for broader coverage
+        for state in region_states[:5]:  # Limit to first 5 states for performance
+            search_locations.append(state)
+    
+    # If single location/zip provided
+    if request.location:
+        search_locations.append(request.location.strip())
+    
+    # Default to first location if multiple provided
+    if not search_locations:
+        raise HTTPException(
+            status_code=400,
+            detail="No valid search location provided"
+        )
+    
     try:
         all_places = []
         seen_ids = set()  # Track unique place IDs to prevent duplicates
