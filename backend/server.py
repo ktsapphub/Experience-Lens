@@ -167,6 +167,61 @@ async def root():
     return {"message": "Google Maps Location Scraper API"}
 
 
+# User Authentication Endpoints
+@api_router.post("/auth/register", response_model=UserResponse)
+async def register_user(user: UserCreate):
+    """Register a new user"""
+    # Check if user already exists
+    existing_user = await db.users.find_one({"email": user.email.lower()})
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    
+    # Hash password and create user
+    hashed_password = pwd_context.hash(user.password)
+    user_doc = {
+        "id": str(uuid.uuid4()),
+        "email": user.email.lower(),
+        "password": hashed_password,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.users.insert_one(user_doc)
+    
+    return UserResponse(
+        id=user_doc["id"],
+        email=user_doc["email"],
+        created_at=user_doc["created_at"]
+    )
+
+
+@api_router.post("/auth/login")
+async def login_user(user: UserLogin):
+    """Login user"""
+    db_user = await db.users.find_one({"email": user.email.lower()})
+    
+    if not db_user:
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+    
+    if not pwd_context.verify(user.password, db_user["password"]):
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+    
+    return {
+        "success": True,
+        "message": "Login successful",
+        "user": {
+            "id": db_user["id"],
+            "email": db_user["email"]
+        }
+    }
+
+
+@api_router.get("/users", response_model=List[UserResponse])
+async def get_users():
+    """Get all users"""
+    users = await db.users.find({}, {"_id": 0, "password": 0}).to_list(100)
+    return [UserResponse(id=u["id"], email=u["email"], created_at=u["created_at"]) for u in users]
+
+
 @api_router.get("/categories")
 async def get_categories():
     """Return list of available categories"""
