@@ -643,7 +643,7 @@ function App() {
                     <SelectValue placeholder="Select US region (optional)" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">
+                    <SelectItem value="none" data-testid="region-option-none">
                       <span className="text-muted-foreground">No region selected</span>
                     </SelectItem>
                     {Object.entries(US_REGIONS).map(([id, data]) => (
