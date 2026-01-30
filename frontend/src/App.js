@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { BrowserRouter as Router, Routes, Route, Link, useLocation } from "react-router-dom";
 import "@/App.css";
 import axios from "axios";
 import { Toaster, toast } from "sonner";
@@ -41,9 +42,13 @@ import {
   CheckSquare,
   Square,
   Trash2,
-  Eye
+  Eye,
+  Clock,
+  Settings
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
+import HistoryPage from "@/pages/HistoryPage";
+import ConfigPage from "@/pages/ConfigPage";
 
 // Helper to get seen locations from localStorage
 const getSeenLocations = () => {
