@@ -170,7 +170,7 @@ const CATEGORY_IMAGES = {
 };
 
 // Location Card Component
-function LocationCard({ place, index, isSelected, onSelect }) {
+function LocationCard({ place, index, isSelected, onSelect, isNew, onRemove }) {
   const [imageError, setImageError] = useState({});
   const category = CATEGORIES.find(c => c.id === place.category);
   const CategoryIcon = category?.icon || MapPin;
@@ -199,6 +199,33 @@ function LocationCard({ place, index, isSelected, onSelect }) {
           data-testid={`select-location-${index}`}
         />
       </div>
+
+      {/* New/Seen Badge */}
+      <div className="absolute top-3 left-12 z-10">
+        {isNew ? (
+          <span className="px-2 py-0.5 text-xs font-medium bg-emerald-500 text-white rounded-full shadow-sm">
+            New
+          </span>
+        ) : (
+          <span className="px-2 py-0.5 text-xs font-medium bg-gray-500/80 text-white rounded-full shadow-sm flex items-center gap-1">
+            <Eye className="w-3 h-3" />
+            Seen
+          </span>
+        )}
+      </div>
+
+      {/* Remove Button */}
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onRemove(place.id);
+        }}
+        className="absolute top-3 right-12 z-10 p-1.5 bg-white/90 backdrop-blur-sm rounded-full hover:bg-red-100 hover:text-red-600 transition-colors shadow-sm"
+        title="Remove from results"
+        data-testid={`remove-location-${index}`}
+      >
+        <Trash2 className="w-3.5 h-3.5" />
+      </button>
 
       <div className="relative h-48 bg-secondary overflow-hidden">
         {imageError.main ? (
