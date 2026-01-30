@@ -159,6 +159,19 @@ async def get_categories():
     return {"categories": categories}
 
 
+@api_router.get("/regions")
+async def get_regions():
+    """Return list of US regions with their states"""
+    regions = []
+    for region_id, region_data in US_REGIONS.items():
+        regions.append({
+            "id": region_id,
+            "name": region_data["name"],
+            "states": region_data["states"]
+        })
+    return {"regions": regions}
+
+
 @api_router.post("/places/search", response_model=SearchResponse)
 async def search_places(request: SearchRequest):
     """Search for places based on category and location"""
