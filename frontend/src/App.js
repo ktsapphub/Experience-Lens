@@ -528,12 +528,21 @@ function App() {
     }
   };
 
-  const handleExportCSV = useCallback(async () => {
-    const dataToExport = allPlaces.length > 0 ? allPlaces : places;
+  const handleExportCSV = useCallback(async (exportType = 'all') => {
+    let dataToExport;
     
-    if (dataToExport.length === 0) {
-      toast.error("No locations to export");
-      return;
+    if (exportType === 'selected') {
+      dataToExport = allPlaces.filter(p => selectedIds.has(p.id));
+      if (dataToExport.length === 0) {
+        toast.error("No locations selected for export");
+        return;
+      }
+    } else {
+      dataToExport = allPlaces.length > 0 ? allPlaces : places;
+      if (dataToExport.length === 0) {
+        toast.error("No locations to export");
+        return;
+      }
     }
 
     try {
@@ -543,7 +552,8 @@ function App() {
       const link = document.createElement('a');
       link.href = url;
       const locationPart = location || region || 'locations';
-      link.download = `${category}-${locationPart.replace(/\s+/g, '-')}.csv`;
+      const suffix = exportType === 'selected' ? '-selected' : '';
+      link.download = `${category}-${locationPart.replace(/\s+/g, '-')}${suffix}.csv`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -553,7 +563,7 @@ function App() {
       console.error("Export error:", error);
       toast.error("Failed to export CSV");
     }
-  }, [places, allPlaces, category, location, region]);
+  }, [places, allPlaces, category, location, region, selectedIds]);
 
   const handleKeyPress = (e) => {
     if (e.key === 'Enter') {
