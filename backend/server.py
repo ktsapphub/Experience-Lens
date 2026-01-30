@@ -151,6 +151,8 @@ async def search_places(request: SearchRequest):
     
     try:
         all_places = []
+        seen_ids = set()  # Track unique place IDs to prevent duplicates
+        seen_names_addresses = set()  # Track name+address combos for additional dedup
         
         # Get keywords for this category
         keywords = CATEGORY_KEYWORDS.get(request.category, "")
