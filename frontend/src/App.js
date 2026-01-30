@@ -854,9 +854,57 @@ function App() {
                   <Badge variant="outline">{selectedRegion.name}</Badge>
                 )}
               </div>
-              <span className="text-sm text-muted-foreground">
-                Page {pagination.page} of {pagination.totalPages}
-              </span>
+              
+              <div className="flex items-center gap-4">
+                {/* Selection Controls */}
+                <div className="flex items-center gap-2 border-r border-border pr-4">
+                  {selectedIds.size > 0 ? (
+                    <>
+                      <span className="text-sm text-muted-foreground">
+                        {selectedIds.size} selected
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={deselectAll}
+                        className="text-xs h-8"
+                        data-testid="deselect-all-btn"
+                      >
+                        <X className="w-3 h-3 mr-1" />
+                        Clear
+                      </Button>
+                    </>
+                  ) : (
+                    <span className="text-sm text-muted-foreground">None selected</span>
+                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={selectAllVisible}
+                    className="text-xs h-8"
+                    data-testid="select-page-btn"
+                  >
+                    <CheckSquare className="w-3 h-3 mr-1" />
+                    Select Page
+                  </Button>
+                  {allPlaces.length > places.length && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={selectAll}
+                      className="text-xs h-8"
+                      data-testid="select-all-btn"
+                    >
+                      <Check className="w-3 h-3 mr-1" />
+                      Select All ({allPlaces.length})
+                    </Button>
+                  )}
+                </div>
+                
+                <span className="text-sm text-muted-foreground">
+                  Page {pagination.page} of {pagination.totalPages}
+                </span>
+              </div>
             </div>
           </div>
         )}
