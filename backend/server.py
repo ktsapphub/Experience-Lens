@@ -262,6 +262,121 @@ async def get_users():
     return [UserResponse(id=u["id"], email=u["email"], created_at=u["created_at"]) for u in users]
 
 
+# Configuration Endpoints
+@api_router.get("/config")
+async def get_config():
+    """Get application configuration"""
+    return {
+        "app_version": APP_VERSION,
+        "api_version": API_VERSION,
+        "build_date": BUILD_DATE,
+        "tech_stack": {
+            "frontend": "React 18 + Tailwind CSS + shadcn/ui",
+            "backend": "FastAPI + Motor (async MongoDB)",
+            "database": "MongoDB",
+            "external_api": "Google Places API (New)"
+        },
+        "protocol": {
+            "search_method": "Text Search API with category-specific keywords",
+            "deduplication": "Place ID + Name/Address combination",
+            "filtering": "Requires address, website, and photos",
+            "pagination": "20 results per page, max 60 total per search"
+        },
+        "categories": {
+            category_id: {
+                "place_types": CATEGORY_TYPES.get(category_id, []),
+                "keywords": CATEGORY_KEYWORDS.get(category_id, "")
+            }
+            for category_id in CATEGORY_TYPES.keys()
+        }
+    }
+
+
+@api_router.put("/config/category")
+async def update_category_config(config: ConfigUpdate):
+    """Update category configuration"""
+    global CATEGORY_TYPES, CATEGORY_KEYWORDS
+    
+    if config.category_id not in DEFAULT_CATEGORY_TYPES:
+        raise HTTPException(status_code=400, detail=f"Invalid category: {config.category_id}")
+    
+    if config.place_types is not None:
+        CATEGORY_TYPES[config.category_id] = config.place_types
+    
+    if config.keywords is not None:
+        CATEGORY_KEYWORDS[config.category_id] = config.keywords
+    
+    # Store in database for persistence
+    await db.config.update_one(
+        {"category_id": config.category_id},
+        {"$set": {
+            "category_id": config.category_id,
+            "place_types": CATEGORY_TYPES[config.category_id],
+            "keywords": CATEGORY_KEYWORDS[config.category_id],
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }},
+        upsert=True
+    )
+    
+    return {
+        "success": True,
+        "message": f"Configuration updated for {config.category_id}",
+        "config": {
+            "place_types": CATEGORY_TYPES[config.category_id],
+            "keywords": CATEGORY_KEYWORDS[config.category_id]
+        }
+    }
+
+
+@api_router.post("/config/reset")
+async def reset_config():
+    """Reset configuration to defaults"""
+    global CATEGORY_TYPES, CATEGORY_KEYWORDS
+    CATEGORY_TYPES = DEFAULT_CATEGORY_TYPES.copy()
+    CATEGORY_KEYWORDS = DEFAULT_CATEGORY_KEYWORDS.copy()
+    await db.config.delete_many({})
+    return {"success": True, "message": "Configuration reset to defaults"}
+
+
+# Enhanced Search History Endpoints
+@api_router.get("/history")
+async def get_search_history(limit: int = Query(default=50, le=200)):
+    """Get detailed search history"""
+    history = await db.search_history.find(
+        {},
+        {"_id": 0}
+    ).sort("timestamp", -1).limit(limit).to_list(length=limit)
+    return {"history": history}
+
+
+@api_router.get("/history/{history_id}")
+async def get_history_entry(history_id: str):
+    """Get single history entry with full results"""
+    entry = await db.search_history.find_one(
+        {"id": history_id},
+        {"_id": 0}
+    )
+    if not entry:
+        raise HTTPException(status_code=404, detail="History entry not found")
+    return entry
+
+
+@api_router.delete("/history/{history_id}")
+async def delete_history_entry(history_id: str):
+    """Delete a history entry"""
+    result = await db.search_history.delete_one({"id": history_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="History entry not found")
+    return {"success": True, "message": "History entry deleted"}
+
+
+@api_router.delete("/history")
+async def clear_history():
+    """Clear all search history"""
+    await db.search_history.delete_many({})
+    return {"success": True, "message": "All history cleared"}
+
+
 @api_router.get("/categories")
 async def get_categories():
     """Return list of available categories"""
