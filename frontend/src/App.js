@@ -1020,13 +1020,15 @@ function App() {
           ) : places.length > 0 ? (
             <>
               <div className="results-grid border-t border-l border-border" data-testid="results-grid">
-                {places.map((place, index) => (
+                {visiblePlaces.map((place, index) => (
                   <LocationCard 
                     key={place.id || index} 
                     place={place} 
                     index={index}
                     isSelected={selectedIds.has(place.id)}
                     onSelect={toggleSelection}
+                    isNew={!seenLocations.has(place.id)}
+                    onRemove={removeLocation}
                   />
                 ))}
               </div>
