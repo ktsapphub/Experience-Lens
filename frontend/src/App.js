@@ -601,7 +601,7 @@ function App() {
                           <p className="font-semibold text-sm">{cat.tooltip.title}</p>
                           <p className="text-xs opacity-90 leading-relaxed">{cat.tooltip.description}</p>
                           <div className="pt-2 border-t border-white/20">
-                            <p className="text-xs font-medium mb-1.5 opacity-70">Search keywords:</p>
+                            <p className="text-xs font-medium mb-1.5 opacity-70">Search keyword examples:</p>
                             <div className="flex flex-wrap gap-1">
                               {cat.tooltip.keywords.map((keyword) => (
                                 <span 
