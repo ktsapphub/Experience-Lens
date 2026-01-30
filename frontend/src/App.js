@@ -916,7 +916,13 @@ function App() {
             <>
               <div className="results-grid border-t border-l border-border" data-testid="results-grid">
                 {places.map((place, index) => (
-                  <LocationCard key={place.id || index} place={place} index={index} />
+                  <LocationCard 
+                    key={place.id || index} 
+                    place={place} 
+                    index={index}
+                    isSelected={selectedIds.has(place.id)}
+                    onSelect={toggleSelection}
+                  />
                 ))}
               </div>
               
