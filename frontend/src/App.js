@@ -929,7 +929,12 @@ function App() {
             <div className="max-w-7xl mx-auto flex items-center justify-between flex-wrap gap-4">
               <div className="flex items-center gap-3 flex-wrap">
                 <span className="font-semibold text-lg" style={{ fontFamily: 'IBM Plex Sans, sans-serif' }}>
-                  {pagination.total} locations
+                  {visiblePlaces.length} locations
+                  {removedIds.size > 0 && (
+                    <span className="text-sm font-normal text-muted-foreground ml-1">
+                      ({removedIds.size} removed)
+                    </span>
+                  )}
                 </span>
                 {selectedCategory && (
                   <Badge className={`${selectedCategory.color} text-white border-0`}>
@@ -941,6 +946,17 @@ function App() {
                 )}
                 {searchTab === "region" && selectedRegion && (
                   <Badge variant="outline">{selectedRegion.name}</Badge>
+                )}
+                {removedIds.size > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={undoRemovals}
+                    className="text-xs h-7 text-muted-foreground hover:text-foreground"
+                    data-testid="undo-removals-btn"
+                  >
+                    Restore removed
+                  </Button>
                 )}
               </div>
               
@@ -976,7 +992,7 @@ function App() {
                     <CheckSquare className="w-3 h-3 mr-1" />
                     Select Page
                   </Button>
-                  {allPlaces.length > places.length && (
+                  {visibleAllPlaces.length > visiblePlaces.length && (
                     <Button
                       variant="outline"
                       size="sm"
@@ -985,7 +1001,7 @@ function App() {
                       data-testid="select-all-btn"
                     >
                       <Check className="w-3 h-3 mr-1" />
-                      Select All ({allPlaces.length})
+                      Select All ({visibleAllPlaces.length})
                     </Button>
                   )}
                 </div>
