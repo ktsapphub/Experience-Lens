@@ -136,6 +136,23 @@ class StatusCheckCreate(BaseModel):
     client_name: str
 
 
+# User Models
+class UserCreate(BaseModel):
+    email: EmailStr
+    password: str
+
+
+class UserLogin(BaseModel):
+    email: EmailStr
+    password: str
+
+
+class UserResponse(BaseModel):
+    id: str
+    email: str
+    created_at: str
+
+
 # Helper function to extract Instagram from website or editorial summary
 def extract_instagram(place_data: dict) -> Optional[str]:
     """Try to extract Instagram handle from place data"""
