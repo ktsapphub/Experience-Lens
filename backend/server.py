@@ -261,11 +261,6 @@ async def search_places(request: SearchRequest):
                 if response.status_code == 200:
                     data = response.json()
                     for place in data.get("places", []):
-                        # Check if place already exists
-                        place_id = place.get("id")
-                        if any(p.id == place_id for p in all_places):
-                            continue
-                        
                         # Skip places without photos
                         photos_data = place.get("photos", [])
                         if not photos_data:
@@ -305,6 +300,16 @@ async def search_places(request: SearchRequest):
                             rating=place.get("rating"),
                             category=request.category
                         )
+                        
+                        # Deduplication check by ID and name+address
+                        place_id = place.get("id")
+                        name_addr_key = f"{place_result.name}|{place_result.address}".lower()
+                        
+                        if place_id in seen_ids or name_addr_key in seen_names_addresses:
+                            continue
+                        
+                        seen_ids.add(place_id)
+                        seen_names_addresses.add(name_addr_key)
                         all_places.append(place_result)
         
         # Store search in history
