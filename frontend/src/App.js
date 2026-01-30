@@ -595,14 +595,27 @@ function App() {
             </div>
             
             {pagination.total > 0 && (
-              <Button
-                onClick={handleExportCSV}
-                className="bg-foreground text-background hover:bg-foreground/90"
-                data-testid="export-csv-button"
-              >
-                <Download className="w-4 h-4 mr-2" />
-                Export CSV ({allPlaces.length || pagination.total})
-              </Button>
+              <div className="flex items-center gap-2">
+                {selectedIds.size > 0 && (
+                  <Button
+                    onClick={() => handleExportCSV('selected')}
+                    variant="outline"
+                    className="border-primary text-primary hover:bg-primary/10"
+                    data-testid="export-selected-button"
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Export Selected ({selectedIds.size})
+                  </Button>
+                )}
+                <Button
+                  onClick={() => handleExportCSV('all')}
+                  className="bg-foreground text-background hover:bg-foreground/90"
+                  data-testid="export-csv-button"
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Export All ({allPlaces.length || pagination.total})
+                </Button>
+              </div>
             )}
           </div>
         </div>
