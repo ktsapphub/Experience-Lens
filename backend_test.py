@@ -4,7 +4,7 @@ import json
 from datetime import datetime
 
 class GoogleMapsScraperTester:
-    def __init__(self, base_url="https://mapdata-collector-1.preview.emergentagent.com"):
+    def __init__(self, base_url="https://maps-scraper-lab.preview.emergentagent.com"):
         self.base_url = base_url
         self.api_url = f"{base_url}/api"
         self.tests_run = 0

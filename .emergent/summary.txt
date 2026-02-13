@@ -1,0 +1,180 @@
+<analysis>**original_problem_statement:**
+The user wants to build a Smart Google Maps Location Scraper. The application should allow searching for locations based on predefined categories (Thrill Seeking, Super Chill, Creative, Pure Entertainment, Foodie) and various location inputs (city/zip, U.S. regions, or specific place names).
+
+**PRODUCT REQUIREMENTS:**
+- **Data Scraped:** Location Name, Address, Latitude/Longitude, Website, Instagram (if available), Short Description, and up to 3 Images.
+- **Search Functionality:**
+    - Search by one of the 5 predefined experience categories.
+    - Search by location: City/Zip code.
+    - Search by one of 5 major U.S. regions (Northeast, Southeast, etc.).
+    - Search by up to 10 specific location names, with an optional 2-letter state code for each to disambiguate.
+- **Results Display:**
+    - Display results in a paginated grid (20 per page).
+    - Flag results that are new vs. seen from previous views.
+    - Flag results missing a description with a yellow border.
+    - Allow removing individual results from the current view.
+- **Exporting:**
+    - Export all results or only selected results to a CSV file.
+    - The CSV must include an Experience Type column, populated based on the search category.
+    - Broken image URLs should not be included in the export.
+- **UI/UX:**
+    - A modern, multi-step UI for searching.
+    - Tooltips for experience categories explaining what they include.
+    - Checkboxes on each result card for individual selection.
+- **Pages:**
+    - **Search Page:** The main interface for searching and viewing results.
+    - **History Page:** A log of all past searches with timestamps and expandable, text-only results lists.
+    - **Configuration Page:** Shows app version info and allows for managing the keywords and location types associated with each experience category.
+- **Users:** Basic user registration and login functionality.
+
+**User's preferred language**: English
+
+**what currently exists?**
+A full-stack application with a React frontend and FastAPI backend is in place. The application connects to a MongoDB database and is integrated with the Google Places API. Users can search for locations using all the specified methods (category, region, specific places with state codes). The results are displayed in a modern UI with pagination, selection checkboxes, new/seen badges, and a remove button. It features CSV export for all or selected items. The application includes History and Configuration pages as per the requirements, along with a basic user authentication system.
+
+**Last working item**:
+- **Last item agent was working:** Implementing two UI/data integrity features:
+    1.  Adding a yellow border to result cards for locations that are missing a description.
+    2.  Preventing broken images from being rendered and ensuring their URLs are excluded from CSV exports.
+- **Status:** IN PROGRESS
+- **Agent Testing Done:** N
+- **Which testing method agent to use?** Frontend testing agent. This is needed to visually verify the yellow border on cards with missing descriptions and to confirm that the image error handling and export logic function correctly.
+- **User Testing Done:** N
+
+**All Pending/In progress Issue list**:
+-   **Issue 1: Verify Description and Image Handling (P0)**
+    -   **Description:** The latest implemented features—flagging locations without a description and handling broken image URLs—have been coded but not tested. Verification is needed to ensure they work as expected.
+    -   **Status:** TESTING PENDING
+    -   **Is recurring issue?** N
+    -   **Should Test frontend/backend/both after fix?** Frontend
+
+    **Issues Detail:**
+    -   **Issue 1: Verify Description and Image Handling**
+        -   **Attempted fixes:** The agent modified  to add a conditional class for the border and implemented an  handler to track and exclude failed image URLs during export.
+        -   **Next debug checklist:**
+            1.  Run a search that is likely to return results with missing descriptions.
+            2.  Use the screenshot tool to confirm that the relevant result cards have a yellow border.
+            3.  Perform a search and export the results to CSV.
+            4.  Inspect the downloaded CSV file to verify that columns for any broken image URLs are left blank.
+        -   **Why fix this issue and what will be achieved with the fix?** This will complete the user's latest request, improving data quality in the UI and the final CSV export.
+
+**In progress Task List**:
+- There are no tasks currently in progress; the last feature implementation is complete and is now awaiting testing.
+
+**Upcoming and Future Tasks**
+- **Upcoming Tasks:**
+    - **P1: Implement Saved Searches:** Add the ability for users to save and load their search configurations (category, location, etc.).
+    - **P1: Add Map View:** Create a toggle to display search results visually on a map.
+    - **P1: Add Rating Filter:** Allow users to filter results by a minimum star rating (e.g., 4+ stars only).
+    - **P1: Secure Routes:** Implement token-based session management and protect the History and Config pages so they are only accessible after login.
+- **Future Tasks:**
+    - **P2: Add Notes to Locations:** Allow users to add personal notes to individual location results.
+    - **P2: Filter by New:** Add a filter to show only New results that haven't been seen before.
+    - **P2: Combine Categories:** Allow users to select multiple experience categories in a single search.
+
+**Completed work in this session**
+- **Core Functionality:**
+    - Implemented Google Places API integration for location scraping.
+    - Created backend endpoints for search () and CSV export ().
+- **Search Features:**
+    - Added search by category, US region, and multiple specific locations with state codes.
+    - Implemented result deduplication logic in .
+- **UI & UX:**
+    - Designed and implemented a modern, multi-step search interface in .
+    - Added pagination, category tooltips, and dynamic result/export counts.
+    - Implemented selective export using checkboxes on result cards ().
+    - Added New/Seen badges and a Remove button to results ().
+- **New Pages & Auth:**
+    - Created a **History Page** with expandable search records ().
+    - Created a **Configuration Page** to manage search types ().
+    - Implemented frontend routing using .
+    - Added basic user registration and login endpoints in .
+- **Data & Export:**
+    - Added Experience Type as the first column in the CSV export ().
+
+**Earlier issues found/mentioned but not fixed**
+-   None. The agent has addressed all issues raised by the user or found during development.
+
+**Known issue recurrence from previous fork**
+-   N/A
+
+**Code Architecture**
+
+
+**Key Technical Concepts**
+-   **Frontend:** React, TailwindCSS, , Shadcn/UI
+-   **Backend:** FastAPI, Motor (async MongoDB driver), Pydantic
+-   **Database:** MongoDB
+-   **Authentication:**  for password hashing,  for JWT (though full session management is not yet implemented).
+-   **Third-Party APIs:** Google Places API
+
+**key DB schema**
+-   **users**: 
+-   **search_history**: 
+-   **configuration**: 
+
+**changes in tech stack**
+-   **Backend:** Added  and  for user authentication.
+-   **Frontend:** Added  for multi-page navigation.
+
+**All files of reference**
+-   : The single source for all backend logic, including API endpoints, Google Places integration, database models, and authentication.
+-   : A large monolithic component that contains the main Search Page, routing setup, state management for search/results/selection, and the definitions for child components like the location card.
+-   : Renders the user's search history.
+-   : Renders the application's configuration UI.
+-   : A shared navigation header used across all pages.
+-   : Contains the .
+
+**Areas that need refactoring**:
+-   The file  has grown to over 1000 lines and handles too many responsibilities (routing, state management, search logic, UI components for the main page). It should be broken down into smaller, specialized components and custom hooks (e.g., , , , ) to improve maintainability and readability.
+
+**key api endpoints**
+-   : Performs a location search based on provided criteria.
+-   : Generates and returns a CSV file of search results.
+-   : Registers a new user.
+-   : Authenticates a user.
+-   : Retrieves the search history for the user.
+-   : Retrieves the current application configuration.
+-   : Updates the application configuration (e.g., keywords for a category).
+
+**Critical Info for New Agent**
+-   The most critical and complex file is . Be extremely cautious when modifying it, as it manages state for search, results, pagination, UI, and user interactions.
+-   The last feature (yellow border for missing description and broken image handling) is implemented but **untested**. Your first task should be to test it thoroughly.
+-   Refactoring  is highly recommended to simplify future development.
+-   User authentication is basic; session management and protected routes are not yet implemented and are a pending future task.
+
+**documents and test reports created in this job**
+-   
+-   
+
+**Last 10 User Messages and any pending HUMAN messages**
+1.  **User Request:** Add an  column to the CSV export. **Status: Completed.**
+2.  **User Request:** Flag locations missing a description with a yellow border and handle broken image URLs in UI and export. **Status: In Progress (Testing Pending).**
+3.  **User Request:** Create History and Configuration pages. **Status: Completed.**
+4.  **User Request:** Add a state abbreviation field for specific location searches. **Status: Completed.**
+5.  **User Request:** Add new/seen badges and a remove button for results. **Status: Completed.**
+6.  **User Request:** Allow individual selection of locations for CSV export. **Status: Completed.**
+7.  **User Request:** Update tooltip text to Search keywords examples:. **Status: Completed.**
+8.  **User Request:** Update app subtitle. **Status: Completed.**
+9.  **User Request:** Add a specific user to the database. **Status: Completed.**
+10. **User Request:** Add tooltips to experience category selectors. **Status: Completed.**
+
+**Project Health Check:**
+-   **Broken:** None.
+-   **Mocked:** No mocked functionality is currently active in the main application.
+
+**3rd Party Integrations**
+-   **Google Places API:** Handles all location data retrieval. Requires a user-provided API key, which is configured in .
+
+**Testing status**
+-   **Testing agent used after significant changes:** YES
+-   **Troubleshoot agent used after agent stuck in loop:** NO
+-   **Test files created:** []
+-   **Known regressions:** []
+
+**Credentials to test flow:**
+-   **Email:** 
+-   **Password:** 
+
+**What agent forgot to execute**
+-   The agent did not execute tests for the last feature implemented: flagging locations with missing descriptions and handling broken image URLs. This is the highest priority next action.</analysis>
