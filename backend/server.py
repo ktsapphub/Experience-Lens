@@ -94,7 +94,7 @@ class PlaceResult(BaseModel):
 
 
 class SearchRequest(BaseModel):
-    category: str
+    category: str = ""  # Optional for specific location searches
     location: str = ""  # City, area, or zip code
     region: str = ""  # Optional region filter
     location_names: List[str] = []  # Optional specific location names (up to 10)
