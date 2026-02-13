@@ -33,6 +33,7 @@ Select from 5 predefined categories:
 - Broken image handling (exclude from UI and CSV)
 - New/Seen badges, Remove button, Selection checkboxes
 - History and Configuration pages
+- Search progress indicator with phase labels
 
 ## Tech Stack
 - Frontend: React + Tailwind CSS + shadcn/ui + react-router-dom
@@ -61,7 +62,7 @@ Select from 5 predefined categories:
 
 ### Frontend (App.js + pages)
 - Swiss minimalist design (IBM Plex Sans, Inter fonts)
-- Multi-step search UI (category → location method → search)
+- Multi-step search UI (category -> location method -> search)
 - Category tooltips with keyword examples
 - Three search methods: City/Zip, US Region, Specific Places with state codes
 - Grid-based results with bordered cards
@@ -71,6 +72,7 @@ Select from 5 predefined categories:
 - New/Seen badges, Remove button, Selection checkboxes
 - Pagination (20 per page)
 - Export All / Export Selected to CSV
+- Search progress indicator with 3 phases (Google Places -> Instagram scraping -> Finalizing)
 - History page with expandable search records
 - Configuration page with System Info and Experience Types tabs
 - Basic auth (register/login)
@@ -88,6 +90,7 @@ Select from 5 predefined categories:
 - [x] Broken image handling
 - [x] Instagram scraping from business websites
 - [x] Instagram handle in CSV (no @ or full URL)
+- [x] Search progress indicator with phase labels
 
 ### P1 (High Priority)
 - [ ] Saved Searches - Save/load search configurations
