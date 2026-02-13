@@ -849,6 +849,18 @@ function SearchPage() {
             <div className="flex items-center gap-2">
               <span className="w-7 h-7 rounded-full bg-primary text-white text-sm font-medium flex items-center justify-center">1</span>
               <h2 className="text-lg font-medium" style={{ fontFamily: 'IBM Plex Sans, sans-serif' }}>Choose Experience Category</h2>
+              <TooltipProvider delayDuration={200}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button className="p-1 rounded-full hover:bg-secondary transition-colors" data-testid="category-info-tooltip">
+                      <Info className="w-4 h-4 text-muted-foreground" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" className="max-w-xs p-3 bg-foreground text-background rounded-lg" sideOffset={6}>
+                    <p className="text-xs leading-relaxed">Optional when using <strong>Specific Places</strong> search. You can skip this step and search directly by location name.</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
             
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
