@@ -693,6 +693,10 @@ async def search_places(request: SearchRequest):
                         seen_names_addresses.add(name_addr_key)
                         all_places.append(place_result)
         
+        # Enrich places with Instagram handles from their websites
+        async with httpx.AsyncClient(timeout=10.0) as ig_client:
+            all_places = await enrich_places_with_instagram(all_places, ig_client)
+
         # Store search in history with results
         # Determine search method
         search_method = "location"
