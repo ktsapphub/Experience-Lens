@@ -554,7 +554,12 @@ function SearchPage() {
     setSearched(true);
 
     try {
-      const filteredLocationNames = searchTab === "specific" ? locationNames.filter(name => name.trim()) : [];
+      // Format location names with state abbreviations
+      const filteredLocationNames = searchTab === "specific" 
+        ? locationNames
+            .filter(loc => loc.name.trim())
+            .map(loc => loc.state ? `${loc.name.trim()}, ${loc.state}` : loc.name.trim())
+        : [];
       
       const response = await axios.post(`${API}/places/search`, {
         category,
