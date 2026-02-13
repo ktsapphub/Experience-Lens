@@ -1042,7 +1042,7 @@ function SearchPage() {
           <div className="flex justify-center">
             <Button
               onClick={() => handleSearch(1)}
-              disabled={loading || !category}
+              disabled={loading || (!category && searchTab !== "specific")}
               size="lg"
               className="h-14 px-12 text-base font-medium bg-primary hover:bg-primary/90 shadow-lg hover:shadow-xl transition-all"
               data-testid="search-button"
