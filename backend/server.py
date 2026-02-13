@@ -632,8 +632,8 @@ async def search_places(request: SearchRequest):
                     seen_names_addresses.add(name_addr_key)
                     all_places.append(place_result)
             
-            # Make additional searches with specific place types to get more results
-            place_types = CATEGORY_TYPES.get(request.category, [])
+            # Make additional searches with specific place types to get more results (only with category)
+            place_types = CATEGORY_TYPES.get(request.category, []) if request.category else []
             
             for place_type in place_types[:2]:
                 if len(all_places) >= 60:  # Cap at 60 total results
