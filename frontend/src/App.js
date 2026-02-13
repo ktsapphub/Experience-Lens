@@ -351,21 +351,76 @@ function LocationCard({ place, index, isSelected, onSelect, isNew, onRemove, onI
   );
 }
 
-// Loading Skeleton Component
-function LoadingSkeleton() {
+// Search Progress Indicator
+const SEARCH_PHASES = [
+  { label: "Searching Google Places...", icon: Search, duration: 4000, progress: 30 },
+  { label: "Scraping Instagram handles...", icon: Instagram, duration: 8000, progress: 70 },
+  { label: "Finalizing results...", icon: Check, duration: 3000, progress: 95 },
+];
+
+function SearchProgress() {
+  const [phaseIndex, setPhaseIndex] = useState(0);
+  const [barWidth, setBarWidth] = useState(0);
+  const startTime = useRef(Date.now());
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const elapsed = Date.now() - startTime.current;
+      let cumulative = 0;
+      let idx = 0;
+      for (let i = 0; i < SEARCH_PHASES.length; i++) {
+        cumulative += SEARCH_PHASES[i].duration;
+        if (elapsed < cumulative) { idx = i; break; }
+        if (i === SEARCH_PHASES.length - 1) idx = i;
+      }
+      setPhaseIndex(idx);
+
+      // Smooth progress: interpolate within current phase
+      let prevCumulative = 0;
+      for (let i = 0; i < idx; i++) prevCumulative += SEARCH_PHASES[i].duration;
+      const phaseElapsed = elapsed - prevCumulative;
+      const phaseDuration = SEARCH_PHASES[idx].duration;
+      const prevProgress = idx > 0 ? SEARCH_PHASES[idx - 1].progress : 0;
+      const targetProgress = SEARCH_PHASES[idx].progress;
+      const ratio = Math.min(phaseElapsed / phaseDuration, 1);
+      setBarWidth(prevProgress + (targetProgress - prevProgress) * ratio);
+    }, 100);
+    return () => clearInterval(interval);
+  }, []);
+
+  const phase = SEARCH_PHASES[phaseIndex];
+  const PhaseIcon = phase.icon;
+
   return (
-    <div className="loading-grid border-t border-l border-border">
-      {[...Array(6)].map((_, i) => (
-        <div key={i} className="loading-card">
-          <div className="skeleton h-48 w-full mb-4 rounded"></div>
-          <div className="space-y-3">
-            <div className="skeleton h-6 w-3/4 rounded"></div>
-            <div className="skeleton h-4 w-1/4 rounded"></div>
-            <div className="skeleton h-4 w-full rounded"></div>
-            <div className="skeleton h-4 w-2/3 rounded"></div>
+    <div className="py-20 flex flex-col items-center gap-6" data-testid="search-progress">
+      <div className="relative w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center">
+        <PhaseIcon className="w-6 h-6 text-primary animate-pulse" />
+      </div>
+      <div className="text-center space-y-1">
+        <p className="text-sm font-medium text-foreground" data-testid="search-progress-label">{phase.label}</p>
+        <p className="text-xs text-muted-foreground">This may take 10–20 seconds</p>
+      </div>
+      <div className="w-72 h-1.5 bg-secondary rounded-full overflow-hidden">
+        <div
+          className="h-full bg-primary rounded-full transition-all duration-300 ease-out"
+          style={{ width: `${barWidth}%` }}
+          data-testid="search-progress-bar"
+        />
+      </div>
+      {/* Skeleton cards behind progress */}
+      <div className="loading-grid border-t border-l border-border mt-4 w-full opacity-40">
+        {[...Array(6)].map((_, i) => (
+          <div key={i} className="loading-card">
+            <div className="skeleton h-48 w-full mb-4 rounded"></div>
+            <div className="space-y-3">
+              <div className="skeleton h-6 w-3/4 rounded"></div>
+              <div className="skeleton h-4 w-1/4 rounded"></div>
+              <div className="skeleton h-4 w-full rounded"></div>
+              <div className="skeleton h-4 w-2/3 rounded"></div>
+            </div>
           </div>
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   );
 }
