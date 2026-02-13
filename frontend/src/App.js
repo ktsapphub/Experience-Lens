@@ -515,18 +515,23 @@ function SearchPage() {
 
   const addLocationName = () => {
     if (locationNames.length < 10) {
-      setLocationNames([...locationNames, ""]);
+      setLocationNames([...locationNames, { name: "", state: "" }]);
     }
   };
 
   const removeLocationName = (index) => {
     const newNames = locationNames.filter((_, i) => i !== index);
-    setLocationNames(newNames.length > 0 ? newNames : [""]);
+    setLocationNames(newNames.length > 0 ? newNames : [{ name: "", state: "" }]);
   };
 
-  const updateLocationName = (index, value) => {
+  const updateLocationName = (index, field, value) => {
     const newNames = [...locationNames];
-    newNames[index] = value;
+    if (field === 'state') {
+      // Only allow 2 letter uppercase state codes
+      newNames[index] = { ...newNames[index], state: value.toUpperCase().slice(0, 2) };
+    } else {
+      newNames[index] = { ...newNames[index], name: value };
+    }
     setLocationNames(newNames);
   };
 
@@ -538,7 +543,7 @@ function SearchPage() {
     
     const hasLocation = location.trim() && searchTab === "location";
     const hasRegion = region && searchTab === "region";
-    const hasLocationNames = locationNames.some(name => name.trim()) && searchTab === "specific";
+    const hasLocationNames = locationNames.some(loc => loc.name.trim()) && searchTab === "specific";
     
     if (!hasLocation && !hasRegion && !hasLocationNames) {
       toast.error("Please provide a search location");
