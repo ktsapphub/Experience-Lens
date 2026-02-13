@@ -695,11 +695,21 @@ async def search_places(request: SearchRequest):
 async def export_places_to_csv(places: List[PlaceResult]):
     """Export places to CSV file"""
     
+    # Experience Type mapping (category_id to display name)
+    EXPERIENCE_TYPE_NAMES = {
+        "thrill_seeking": "Thrill Seeking",
+        "super_chill": "Super Chill",
+        "creative": "Creative",
+        "pure_entertainment": "Pure Entertainment",
+        "foodie": "Foodie"
+    }
+    
     output = io.StringIO()
     writer = csv.writer(output)
     
-    # Write header
+    # Write header with Experience Type as first column
     writer.writerow([
+        "Experience Type",
         "Name",
         "Address",
         "Latitude",
@@ -716,7 +726,10 @@ async def export_places_to_csv(places: List[PlaceResult]):
     # Write data
     for place in places:
         photos = place.photos if place.photos else []
+        # Get experience type display name, default to empty if not found
+        experience_type = EXPERIENCE_TYPE_NAMES.get(place.category, place.category or "")
         writer.writerow([
+            experience_type,
             place.name,
             place.address,
             place.latitude,
