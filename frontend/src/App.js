@@ -902,19 +902,28 @@ function SearchPage() {
                   </div>
                   
                   <div className="space-y-2">
-                    {locationNames.map((name, index) => (
+                    {locationNames.map((loc, index) => (
                       <div key={index} className="flex gap-2">
                         <div className="relative flex-1">
                           <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                           <Input
                             type="text"
-                            placeholder={`Location ${index + 1} (e.g., Central Park, NYC)`}
-                            value={name}
-                            onChange={(e) => updateLocationName(index, e.target.value)}
+                            placeholder={`Location ${index + 1} (e.g., Central Park)`}
+                            value={loc.name}
+                            onChange={(e) => updateLocationName(index, 'name', e.target.value)}
                             className="h-11 pl-10 text-sm border focus:border-primary"
                             data-testid={`location-name-input-${index}`}
                           />
                         </div>
+                        <Input
+                          type="text"
+                          placeholder="ST"
+                          value={loc.state}
+                          onChange={(e) => updateLocationName(index, 'state', e.target.value)}
+                          className="h-11 w-16 text-center text-sm font-medium border focus:border-primary uppercase"
+                          maxLength={2}
+                          data-testid={`location-state-input-${index}`}
+                        />
                         {locationNames.length > 1 && (
                           <Button
                             variant="ghost"
@@ -928,6 +937,9 @@ function SearchPage() {
                         )}
                       </div>
                     ))}
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Add 2-letter state code (e.g., NY, CA) to search same location name in different states
+                    </p>
                   </div>
                 </TabsContent>
               </div>
