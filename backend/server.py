@@ -553,8 +553,14 @@ async def search_places(request: SearchRequest):
                     break
                 
                 # Use Text Search API (New) for better results
+                # Direct search uses location name as-is; category search prepends keywords
+                if is_direct_search:
+                    text_query = search_location
+                else:
+                    text_query = f"{keywords} in {search_location}"
+                
                 search_payload = {
-                    "textQuery": f"{keywords} in {search_location}",
+                    "textQuery": text_query,
                     "maxResultCount": 20
                 }
                 
