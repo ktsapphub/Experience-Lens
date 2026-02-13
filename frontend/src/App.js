@@ -258,7 +258,7 @@ function LocationCard({ place, index, isSelected, onSelect, isNew, onRemove, onI
             src={mainImage}
             alt={place.name}
             className="w-full h-full object-cover"
-            onError={() => handleImageError('main')}
+            onError={() => handleImageError('main', place.photos?.[0]?.url)}
             loading="lazy"
           />
         )}
@@ -283,7 +283,7 @@ function LocationCard({ place, index, isSelected, onSelect, isNew, onRemove, onI
                   src={photo.url}
                   alt={`${place.name} ${idx + 2}`}
                   className="w-full h-full object-cover"
-                  onError={() => handleImageError(`thumb-${idx}`)}
+                  onError={() => handleImageError(`thumb-${idx}`, photo.url)}
                   loading="lazy"
                 />
               )}
