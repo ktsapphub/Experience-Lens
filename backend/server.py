@@ -816,7 +816,7 @@ async def export_places_to_csv(places: List[PlaceResult]):
             place.latitude,
             place.longitude,
             place.website or "",
-            place.instagram or "",
+            ig_handle,
             place.description or "",
             place.rating or "",
             photos[0].url if len(photos) > 0 else "",
