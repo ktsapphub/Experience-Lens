@@ -438,7 +438,7 @@ function SearchPage() {
   const [searchTab, setSearchTab] = useState("location");
   const [location, setLocation] = useState("");
   const [region, setRegion] = useState("");
-  const [locationNames, setLocationNames] = useState([""]);
+  const [locationNames, setLocationNames] = useState([{ name: "", state: "" }]);
   const [places, setPlaces] = useState([]);
   const [allPlaces, setAllPlaces] = useState([]);
   const [loading, setLoading] = useState(false);
