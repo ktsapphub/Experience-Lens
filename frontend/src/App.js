@@ -1114,6 +1114,7 @@ function SearchPage() {
                     onSelect={toggleSelection}
                     isNew={!seenLocations.has(place.id)}
                     onRemove={removeLocation}
+                    onImageError={handleImageError}
                   />
                 ))}
               </div>
