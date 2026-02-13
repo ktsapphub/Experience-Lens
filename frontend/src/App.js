@@ -298,10 +298,12 @@ function LocationCard({ place, index, isSelected, onSelect, isNew, onRemove, onI
           <h3 className="font-semibold text-lg leading-tight line-clamp-2" style={{ fontFamily: 'IBM Plex Sans, sans-serif' }}>
             {place.name}
           </h3>
-          <Badge variant="outline" className={`text-xs ${category?.lightColor || ''}`}>
-            <CategoryIcon className="w-3 h-3 mr-1" />
-            {category?.name || place.category}
-          </Badge>
+          {(category?.name || place.category) && (
+            <Badge variant="outline" className={`text-xs ${category?.lightColor || ''}`}>
+              <CategoryIcon className="w-3 h-3 mr-1" />
+              {category?.name || place.category}
+            </Badge>
+          )}
         </div>
 
         <div className="flex items-start gap-2 text-sm text-muted-foreground">
