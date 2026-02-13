@@ -535,8 +535,11 @@ async def search_places(request: SearchRequest):
         seen_ids = set()  # Track unique place IDs to prevent duplicates
         seen_names_addresses = set()  # Track name+address combos for additional dedup
         
-        # Get keywords for this category
-        keywords = CATEGORY_KEYWORDS.get(request.category, "")
+        # Get keywords for this category (empty if no category)
+        keywords = CATEGORY_KEYWORDS.get(request.category, "") if request.category else ""
+        
+        # Determine if this is a direct location name search (no category)
+        is_direct_search = not request.category and bool(request.location_names)
         
         headers = {
             "X-Goog-Api-Key": GOOGLE_PLACES_API_KEY,
