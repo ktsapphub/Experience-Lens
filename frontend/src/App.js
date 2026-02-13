@@ -617,7 +617,8 @@ function SearchPage() {
   };
 
   const handleSearch = useCallback(async (page = 1) => {
-    if (!category) {
+    // Category is required for location/region search, optional for specific places
+    if (!category && searchTab !== "specific") {
       toast.error("Please select a category");
       return;
     }
