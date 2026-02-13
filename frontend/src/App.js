@@ -462,11 +462,21 @@ function SearchPage() {
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [removedIds, setRemovedIds] = useState(new Set());
   const [seenLocations, setSeenLocations] = useState(() => getSeenLocations());
+  const [failedImages, setFailedImages] = useState({}); // Track failed image URLs per place
   const [pagination, setPagination] = useState({
     page: 1,
     totalPages: 1,
     total: 0
   });
+
+  // Track failed image URLs
+  const handleImageError = useCallback((placeId, imageUrl) => {
+    setFailedImages(prev => {
+      const placeFailures = prev[placeId] || new Set();
+      placeFailures.add(imageUrl);
+      return { ...prev, [placeId]: placeFailures };
+    });
+  }, []);
 
   // Filter out removed locations
   const visiblePlaces = places.filter(p => !removedIds.has(p.id));
