@@ -44,7 +44,8 @@ import {
   Trash2,
   Eye,
   Clock,
-  Settings
+  Settings,
+  Info
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import HistoryPage from "@/pages/HistoryPage";
