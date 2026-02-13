@@ -175,23 +175,39 @@ const CATEGORY_IMAGES = {
 };
 
 // Location Card Component
-function LocationCard({ place, index, isSelected, onSelect, isNew, onRemove }) {
+function LocationCard({ place, index, isSelected, onSelect, isNew, onRemove, onImageError }) {
   const [imageError, setImageError] = useState({});
   const category = CATEGORIES.find(c => c.id === place.category);
   const CategoryIcon = category?.icon || MapPin;
   
   const mainImage = place.photos?.[0]?.url || CATEGORY_IMAGES[place.category];
   
-  const handleImageError = (idx) => {
+  // Check if description is missing
+  const isMissingDescription = !place.description || place.description.trim() === "";
+  
+  const handleImageError = (idx, photoUrl) => {
     setImageError(prev => ({ ...prev, [idx]: true }));
+    // Report failed image to parent for export filtering
+    if (onImageError && photoUrl) {
+      onImageError(place.id, photoUrl);
+    }
   };
 
   return (
     <Card 
-      className={`stagger-item card-hover border-r border-b border-border rounded-none relative ${isSelected ? 'ring-2 ring-primary ring-inset' : ''}`}
+      className={`stagger-item card-hover border-r border-b border-border rounded-none relative ${isSelected ? 'ring-2 ring-primary ring-inset' : ''} ${isMissingDescription ? 'ring-2 ring-yellow-400 ring-inset' : ''}`}
       style={{ animationDelay: `${index * 0.05}s` }}
       data-testid={`location-card-${index}`}
     >
+      {/* Missing Description Warning */}
+      {isMissingDescription && (
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10">
+          <span className="px-2 py-0.5 text-xs font-medium bg-yellow-400 text-yellow-900 rounded-full shadow-sm">
+            No Description
+          </span>
+        </div>
+      )}
+
       {/* Selection Checkbox */}
       <div 
         className="absolute top-3 left-3 z-10"
