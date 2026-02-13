@@ -675,8 +675,18 @@ function SearchPage() {
       }
     }
 
+    // Filter out failed images from export data
+    const cleanedData = dataToExport.map(place => {
+      const placeFailures = failedImages[place.id] || new Set();
+      const validPhotos = (place.photos || []).filter(photo => !placeFailures.has(photo.url));
+      return {
+        ...place,
+        photos: validPhotos
+      };
+    });
+
     try {
-      const response = await axios.post(`${API}/places/export-csv`, dataToExport, { responseType: 'blob' });
+      const response = await axios.post(`${API}/places/export-csv`, cleanedData, { responseType: 'blob' });
       const blob = new Blob([response.data], { type: 'text/csv' });
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
