@@ -798,6 +798,17 @@ async def export_places_to_csv(places: List[PlaceResult]):
         photos = place.photos if place.photos else []
         # Get experience type display name, default to empty if not found
         experience_type = EXPERIENCE_TYPE_NAMES.get(place.category, place.category or "")
+        # Extract Instagram handle only (no @ or full URL)
+        ig_handle = ""
+        if place.instagram:
+            ig_url = place.instagram.lower().rstrip('/')
+            # Extract handle from URL like https://instagram.com/handle
+            ig_match = re.search(r'instagram\.com/([a-zA-Z0-9_.]+)', ig_url)
+            if ig_match:
+                ig_handle = ig_match.group(1)
+            else:
+                # If it's already just a handle
+                ig_handle = place.instagram.lstrip('@')
         writer.writerow([
             experience_type,
             place.name,
