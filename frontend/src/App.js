@@ -1156,7 +1156,7 @@ function SearchPage() {
 
         <div className="max-w-7xl mx-auto">
           {loading ? (
-            <LoadingSkeleton />
+            <SearchProgress />
           ) : visiblePlaces.length > 0 ? (
             <>
               <div className="results-grid border-t border-l border-border" data-testid="results-grid">
