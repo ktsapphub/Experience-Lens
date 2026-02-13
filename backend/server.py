@@ -480,10 +480,17 @@ async def search_places(request: SearchRequest):
             detail="Google Places API is not configured. Please add GOOGLE_PLACES_API_KEY to backend/.env"
         )
     
-    if request.category not in CATEGORY_TYPES:
+    if request.category and request.category not in CATEGORY_TYPES:
         raise HTTPException(
             status_code=400,
             detail=f"Invalid category. Valid categories: {list(CATEGORY_TYPES.keys())}"
+        )
+    
+    # Category is required unless searching by specific location names
+    if not request.category and not request.location_names:
+        raise HTTPException(
+            status_code=400,
+            detail="Please select a category, or use specific location names to search without one"
         )
     
     # Validate at least one location method is provided
