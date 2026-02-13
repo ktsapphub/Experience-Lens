@@ -204,6 +204,70 @@ def extract_instagram(place_data: dict) -> Optional[str]:
     return None
 
 
+# Regex patterns to find Instagram links in HTML
+INSTAGRAM_PATTERNS = [
+    re.compile(r'href=["\'](?:https?://)?(?:www\.)?instagram\.com/([a-zA-Z0-9_.]+)/?["\']', re.IGNORECASE),
+    re.compile(r'(?:https?://)?(?:www\.)?instagram\.com/([a-zA-Z0-9_.]+)/?', re.IGNORECASE),
+]
+
+# Handles to skip (not real user profiles)
+INSTAGRAM_SKIP = {'explore', 'p', 'reel', 'reels', 'stories', 'accounts', 'direct', 'about', 'developer', 'legal', 'privacy', 'terms', 'api', 'press', ''}
+
+
+def parse_instagram_handle(html: str) -> Optional[str]:
+    """Extract Instagram handle from HTML content."""
+    # First try href-based pattern (more reliable, from actual links)
+    for pattern in INSTAGRAM_PATTERNS:
+        matches = pattern.findall(html)
+        for match in matches:
+            handle = match.strip().rstrip('/').lower()
+            if handle and handle not in INSTAGRAM_SKIP and len(handle) <= 30:
+                return handle
+    return None
+
+
+async def scrape_instagram_from_website(http_client: httpx.AsyncClient, website_url: str) -> Optional[str]:
+    """Fetch a business website and extract Instagram handle from its HTML."""
+    if not website_url:
+        return None
+    try:
+        response = await http_client.get(
+            website_url,
+            follow_redirects=True,
+            timeout=5.0,
+            headers={
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            }
+        )
+        if response.status_code == 200:
+            # Only parse first 200KB to avoid huge pages
+            html = response.text[:200000]
+            return parse_instagram_handle(html)
+    except Exception:
+        pass
+    return None
+
+
+async def enrich_places_with_instagram(places: list, http_client: httpx.AsyncClient) -> list:
+    """Concurrently scrape Instagram handles for all places that don't have one."""
+    tasks = []
+    indices = []
+    for i, place in enumerate(places):
+        if not place.instagram and place.website:
+            tasks.append(scrape_instagram_from_website(http_client, place.website))
+            indices.append(i)
+
+    if not tasks:
+        return places
+
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+    for idx, result in zip(indices, results):
+        if isinstance(result, str) and result:
+            handle = result
+            places[idx].instagram = f"https://instagram.com/{handle}"
+    return places
+
+
 @api_router.get("/")
 async def root():
     return {"message": "Google Maps Location Scraper API"}
