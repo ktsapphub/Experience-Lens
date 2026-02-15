@@ -693,6 +693,7 @@ async def search_places(request: SearchRequest):
                             latitude=location.get("latitude", 0),
                             longitude=location.get("longitude", 0),
                             website=website,
+                            phone=place.get("internationalPhoneNumber"),
                             instagram=extract_instagram(place),
                             description=description,
                             photos=photos,
