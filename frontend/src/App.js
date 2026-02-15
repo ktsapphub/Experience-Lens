@@ -50,6 +50,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import HistoryPage from "@/pages/HistoryPage";
 import ConfigPage from "@/pages/ConfigPage";
+import ImportPage from "@/pages/ImportPage";
 
 // Helper to get seen locations from localStorage
 const getSeenLocations = () => {
