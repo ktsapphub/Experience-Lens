@@ -804,6 +804,7 @@ async def export_places_to_csv(places: List[PlaceResult]):
         "Latitude",
         "Longitude",
         "Website",
+        "Phone",
         "Instagram",
         "Description",
         "Rating",
