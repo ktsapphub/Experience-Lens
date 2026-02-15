@@ -802,6 +802,12 @@ function SearchPage() {
                     Search
                   </Button>
                 </Link>
+                <Link to="/import">
+                  <Button variant="ghost" size="sm" className="text-sm">
+                    <Upload className="w-4 h-4 mr-1" />
+                    Import
+                  </Button>
+                </Link>
                 <Link to="/history">
                   <Button variant="ghost" size="sm" className="text-sm">
                     <Clock className="w-4 h-4 mr-1" />
