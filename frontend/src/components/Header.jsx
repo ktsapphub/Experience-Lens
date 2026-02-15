@@ -1,6 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Map, Search, Clock, Settings } from "lucide-react";
+import { Map, Search, Clock, Settings, Upload } from "lucide-react";
 
 export default function Header({ children }) {
   const location = useLocation();
@@ -34,6 +34,16 @@ export default function Header({ children }) {
                 >
                   <Search className="w-4 h-4 mr-1" />
                   Search
+                </Button>
+              </Link>
+              <Link to="/import">
+                <Button 
+                  variant={isActive('/import') ? 'secondary' : 'ghost'} 
+                  size="sm" 
+                  className="text-sm"
+                >
+                  <Upload className="w-4 h-4 mr-1" />
+                  Import
                 </Button>
               </Link>
               <Link to="/history">
