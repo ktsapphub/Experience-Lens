@@ -86,6 +86,7 @@ class PlaceResult(BaseModel):
     latitude: float
     longitude: float
     website: Optional[str] = None
+    phone: Optional[str] = None
     instagram: Optional[str] = None
     description: Optional[str] = None
     photos: List[Photo] = []
