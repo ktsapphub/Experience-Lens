@@ -544,7 +544,7 @@ async def search_places(request: SearchRequest):
         
         headers = {
             "X-Goog-Api-Key": GOOGLE_PLACES_API_KEY,
-            "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.location,places.websiteUri,places.rating,places.photos,places.editorialSummary,places.types"
+            "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.location,places.websiteUri,places.internationalPhoneNumber,places.rating,places.photos,places.editorialSummary,places.types"
         }
         
         async with httpx.AsyncClient(timeout=30.0) as http_client:
