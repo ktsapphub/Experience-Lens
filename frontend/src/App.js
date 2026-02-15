@@ -1235,6 +1235,7 @@ function App() {
       <Toaster position="top-right" richColors />
       <Routes>
         <Route path="/" element={<SearchPage />} />
+        <Route path="/import" element={<ImportPage />} />
         <Route path="/history" element={<HistoryPage />} />
         <Route path="/config" element={<ConfigPage />} />
       </Routes>
