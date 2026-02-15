@@ -864,6 +864,414 @@ async def get_search_history(limit: int = Query(default=10, le=100)):
     return {"history": history}
 
 
+# ======== IMPORT & CROSS-CHECK ENDPOINTS ========
+
+# Gemini LLM key
+EMERGENT_LLM_KEY = os.environ.get('EMERGENT_LLM_KEY', '')
+
+# Column mapping for import (matches export format)
+IMPORT_COLUMNS = [
+    "Experience Type", "Name", "Address", "Latitude", "Longitude",
+    "Website", "Phone", "Instagram", "Description", "Rating",
+    "Image 1", "Image 2", "Image 3"
+]
+
+# Also support old format without Phone column
+IMPORT_COLUMNS_OLD = [
+    "Experience Type", "Name", "Address", "Latitude", "Longitude",
+    "Website", "Instagram", "Description", "Rating",
+    "Image 1", "Image 2", "Image 3"
+]
+
+
+class ImportedLocation(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    experience_type: str = ""
+    name: str = ""
+    address: str = ""
+    latitude: float = 0
+    longitude: float = 0
+    website: str = ""
+    phone: str = ""
+    instagram: str = ""
+    description: str = ""
+    rating: Optional[float] = None
+    images: List[str] = []
+
+
+class CrossCheckResult(BaseModel):
+    id: str
+    original: ImportedLocation
+    google: Optional[ImportedLocation] = None
+    discrepancies: dict = {}
+    matched: bool = False
+
+
+class DescriptionRequest(BaseModel):
+    name: str
+    address: str = ""
+    category: str = ""
+    website: str = ""
+
+
+def parse_csv_row(row: dict, has_phone: bool) -> ImportedLocation:
+    """Parse a single CSV/Excel row into an ImportedLocation."""
+    images = []
+    for i in range(1, 4):
+        img = (row.get(f"Image {i}") or "").strip()
+        if img:
+            images.append(img)
+
+    rating_str = (row.get("Rating") or "").strip()
+    rating = None
+    if rating_str:
+        try:
+            rating = float(rating_str)
+        except ValueError:
+            pass
+
+    lat_str = (row.get("Latitude") or "0").strip()
+    lng_str = (row.get("Longitude") or "0").strip()
+    try:
+        lat = float(lat_str)
+    except ValueError:
+        lat = 0
+    try:
+        lng = float(lng_str)
+    except ValueError:
+        lng = 0
+
+    ig_raw = (row.get("Instagram") or "").strip()
+    # Normalize: if it's just a handle, convert to full URL for consistency
+    ig = ""
+    if ig_raw:
+        if "instagram.com" in ig_raw.lower():
+            ig = ig_raw
+        else:
+            ig = f"https://instagram.com/{ig_raw.lstrip('@')}"
+
+    return ImportedLocation(
+        experience_type=(row.get("Experience Type") or "").strip(),
+        name=(row.get("Name") or "").strip(),
+        address=(row.get("Address") or "").strip(),
+        latitude=lat,
+        longitude=lng,
+        website=(row.get("Website") or "").strip(),
+        phone=(row.get("Phone") or "").strip() if has_phone else "",
+        instagram=ig,
+        description=(row.get("Description") or "").strip(),
+        rating=rating,
+        images=images,
+    )
+
+
+@api_router.post("/import/upload")
+async def upload_import_file(file: UploadFile = File(...)):
+    """Parse an uploaded CSV or Excel file and return structured location data."""
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="No file provided")
+
+    ext = file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else ""
+    if ext not in ("csv", "xlsx", "xls"):
+        raise HTTPException(status_code=400, detail="Unsupported file type. Please upload CSV or Excel (.xlsx)")
+
+    content = await file.read()
+    locations = []
+
+    try:
+        if ext == "csv":
+            text = content.decode("utf-8-sig")
+            reader = csv.DictReader(io.StringIO(text))
+            headers = reader.fieldnames or []
+            has_phone = "Phone" in headers
+            for row in reader:
+                loc = parse_csv_row(row, has_phone)
+                if loc.name:
+                    locations.append(loc)
+        else:
+            import openpyxl
+            wb = openpyxl.load_workbook(io.BytesIO(content), read_only=True)
+            ws = wb.active
+            rows = list(ws.iter_rows(values_only=True))
+            if len(rows) < 2:
+                raise HTTPException(status_code=400, detail="File has no data rows")
+            headers = [str(h).strip() if h else "" for h in rows[0]]
+            has_phone = "Phone" in headers
+            for row_values in rows[1:]:
+                row_dict = {headers[i]: (str(row_values[i]) if i < len(row_values) and row_values[i] is not None else "") for i in range(len(headers))}
+                loc = parse_csv_row(row_dict, has_phone)
+                if loc.name:
+                    locations.append(loc)
+            wb.close()
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error parsing import file: {e}")
+        raise HTTPException(status_code=400, detail=f"Failed to parse file: {str(e)}")
+
+    return {"success": True, "locations": [loc.model_dump() for loc in locations], "count": len(locations)}
+
+
+async def lookup_google_place(http_client: httpx.AsyncClient, name: str, address: str) -> Optional[dict]:
+    """Search Google Places for a single location by name and address."""
+    query = name
+    if address:
+        query = f"{name} {address}"
+
+    headers = {
+        "X-Goog-Api-Key": GOOGLE_PLACES_API_KEY,
+        "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.location,places.websiteUri,places.internationalPhoneNumber,places.rating,places.photos,places.editorialSummary"
+    }
+    payload = {"textQuery": query, "maxResultCount": 1}
+
+    try:
+        resp = await http_client.post(
+            "https://places.googleapis.com/v1/places:searchText",
+            json=payload,
+            headers=headers,
+            timeout=15.0
+        )
+        if resp.status_code == 200:
+            places = resp.json().get("places", [])
+            if places:
+                return places[0]
+    except Exception as e:
+        logger.warning(f"Google lookup failed for '{name}': {e}")
+    return None
+
+
+def google_place_to_imported(place: dict) -> ImportedLocation:
+    """Convert a Google Places API result to ImportedLocation."""
+    photos_data = place.get("photos", [])
+    images = []
+    for photo in photos_data[:3]:
+        photo_name = photo.get("name", "")
+        if photo_name:
+            images.append(f"https://places.googleapis.com/v1/{photo_name}/media?maxHeightPx=400&maxWidthPx=600&key={GOOGLE_PLACES_API_KEY}")
+
+    editorial = place.get("editorialSummary", {})
+    description = editorial.get("text", "") if editorial else ""
+    location = place.get("location", {})
+
+    website = place.get("websiteUri", "")
+    ig = ""
+    if website and "instagram.com" in website.lower():
+        ig = website
+
+    return ImportedLocation(
+        name=place.get("displayName", {}).get("text", ""),
+        address=place.get("formattedAddress", ""),
+        latitude=location.get("latitude", 0),
+        longitude=location.get("longitude", 0),
+        website=website if "instagram.com" not in (website or "").lower() else "",
+        phone=place.get("internationalPhoneNumber", ""),
+        instagram=ig,
+        description=description,
+        rating=place.get("rating"),
+        images=images,
+    )
+
+
+def find_discrepancies(original: ImportedLocation, google: ImportedLocation) -> dict:
+    """Compare original and Google data, return dict of field discrepancies."""
+    discrepancies = {}
+    fields_to_check = [
+        ("address", "Address"),
+        ("website", "Website"),
+        ("phone", "Phone"),
+        ("description", "Description"),
+        ("rating", "Rating"),
+    ]
+    for field, label in fields_to_check:
+        orig_val = getattr(original, field)
+        goog_val = getattr(google, field)
+        # Normalize for comparison
+        orig_str = str(orig_val).strip().lower() if orig_val else ""
+        goog_str = str(goog_val).strip().lower() if goog_val else ""
+        # Only flag if BOTH have data and they differ
+        if orig_str and goog_str and orig_str != goog_str:
+            discrepancies[field] = {
+                "original": str(orig_val).strip() if orig_val else "",
+                "google": str(goog_val).strip() if goog_val else "",
+                "label": label
+            }
+
+    # Check images - only if Google has images and original doesn't (or has fewer)
+    if len(google.images) > len(original.images) and len(original.images) == 0:
+        discrepancies["images"] = {
+            "original": f"{len(original.images)} images",
+            "google": f"{len(google.images)} images",
+            "label": "Images"
+        }
+
+    return discrepancies
+
+
+@api_router.post("/import/cross-check")
+async def cross_check_locations(locations: List[ImportedLocation]):
+    """Cross-check imported locations against Google Places API."""
+    if not GOOGLE_PLACES_API_KEY:
+        raise HTTPException(status_code=500, detail="Google Places API key not configured")
+
+    results = []
+
+    async with httpx.AsyncClient(timeout=30.0) as http_client:
+        # Process in batches of 5 for concurrency
+        for i in range(0, len(locations), 5):
+            batch = locations[i:i+5]
+            tasks = [lookup_google_place(http_client, loc.name, loc.address) for loc in batch]
+            google_results = await asyncio.gather(*tasks, return_exceptions=True)
+
+            for loc, gresult in zip(batch, google_results):
+                if isinstance(gresult, Exception) or gresult is None:
+                    results.append(CrossCheckResult(
+                        id=loc.id,
+                        original=loc,
+                        google=None,
+                        discrepancies={},
+                        matched=False
+                    ))
+                    continue
+
+                google_loc = google_place_to_imported(gresult)
+                discreps = find_discrepancies(loc, google_loc)
+
+                # Auto-fill missing fields from Google (no discrepancy, just blank originals)
+                filled = loc.model_copy()
+                if not filled.address and google_loc.address:
+                    filled.address = google_loc.address
+                if not filled.website and google_loc.website:
+                    filled.website = google_loc.website
+                if not filled.phone and google_loc.phone:
+                    filled.phone = google_loc.phone
+                if not filled.description and google_loc.description:
+                    filled.description = google_loc.description
+                if filled.rating is None and google_loc.rating is not None:
+                    filled.rating = google_loc.rating
+                if not filled.images and google_loc.images:
+                    filled.images = google_loc.images
+                if filled.latitude == 0 and google_loc.latitude != 0:
+                    filled.latitude = google_loc.latitude
+                if filled.longitude == 0 and google_loc.longitude != 0:
+                    filled.longitude = google_loc.longitude
+                if not filled.instagram and google_loc.instagram:
+                    filled.instagram = google_loc.instagram
+
+                results.append(CrossCheckResult(
+                    id=loc.id,
+                    original=filled,
+                    google=google_loc,
+                    discrepancies=discreps,
+                    matched=True
+                ))
+
+        # Enrich with Instagram from websites
+        filled_locs = [r.original for r in results if r.matched and not r.original.instagram and r.original.website]
+        if filled_locs:
+            async with httpx.AsyncClient(timeout=10.0) as ig_client:
+                ig_tasks = [scrape_instagram_from_website(ig_client, loc.website) for loc in filled_locs]
+                ig_results = await asyncio.gather(*ig_tasks, return_exceptions=True)
+                ig_idx = 0
+                for r in results:
+                    if r.matched and not r.original.instagram and r.original.website:
+                        handle = ig_results[ig_idx] if ig_idx < len(ig_results) else None
+                        if isinstance(handle, str) and handle:
+                            r.original.instagram = f"https://instagram.com/{handle}"
+                        ig_idx += 1
+
+    return {"success": True, "results": [r.model_dump() for r in results]}
+
+
+@api_router.post("/import/generate-description")
+async def generate_description(request: DescriptionRequest):
+    """Generate a short description for a location using Gemini."""
+    if not EMERGENT_LLM_KEY:
+        raise HTTPException(status_code=500, detail="LLM key not configured")
+
+    try:
+        from emergentintegrations.llm.chat import LlmChat, UserMessage
+
+        chat = LlmChat(
+            api_key=EMERGENT_LLM_KEY,
+            session_id=f"desc-{uuid.uuid4()}",
+            system_message="You are a concise location description writer. Write engaging, factual mini-descriptions for businesses and places. Keep descriptions under 500 characters. Do not use quotes around the description. Just output the description text directly."
+        ).with_model("gemini", "gemini-2.5-flash")
+
+        prompt = f"Write a short, engaging description (max 500 characters) for this place:\nName: {request.name}"
+        if request.address:
+            prompt += f"\nAddress: {request.address}"
+        if request.category:
+            prompt += f"\nCategory: {request.category}"
+        if request.website:
+            prompt += f"\nWebsite: {request.website}"
+
+        user_message = UserMessage(text=prompt)
+        response = await chat.send_message(user_message)
+        description = response.strip().strip('"').strip("'")
+        # Enforce 500 char limit
+        if len(description) > 500:
+            description = description[:497] + "..."
+
+        return {"success": True, "description": description}
+    except Exception as e:
+        logger.error(f"Description generation error: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to generate description: {str(e)}")
+
+
+@api_router.post("/import/export-csv")
+async def export_import_csv(locations: List[ImportedLocation]):
+    """Export cross-checked/enriched locations to CSV."""
+    EXPERIENCE_TYPE_NAMES = {
+        "thrill_seeking": "Thrill Seeking",
+        "super_chill": "Super Chill",
+        "creative": "Creative",
+        "pure_entertainment": "Pure Entertainment",
+        "foodie": "Foodie"
+    }
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow([
+        "Experience Type", "Name", "Address", "Latitude", "Longitude",
+        "Website", "Phone", "Instagram", "Description", "Rating",
+        "Image 1", "Image 2", "Image 3"
+    ])
+
+    for loc in locations:
+        exp_type = EXPERIENCE_TYPE_NAMES.get(loc.experience_type, loc.experience_type or "")
+        # Extract IG handle
+        ig_handle = ""
+        if loc.instagram:
+            ig_match = re.search(r'instagram\.com/([a-zA-Z0-9_.]+)', loc.instagram.lower().rstrip('/'))
+            if ig_match:
+                ig_handle = ig_match.group(1)
+            else:
+                ig_handle = loc.instagram.lstrip('@')
+
+        writer.writerow([
+            exp_type,
+            loc.name,
+            loc.address,
+            loc.latitude,
+            loc.longitude,
+            loc.website or "",
+            loc.phone or "",
+            ig_handle,
+            loc.description or "",
+            loc.rating or "",
+            loc.images[0] if len(loc.images) > 0 else "",
+            loc.images[1] if len(loc.images) > 1 else "",
+            loc.images[2] if len(loc.images) > 2 else "",
+        ])
+
+    output.seek(0)
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=enriched-locations.csv"}
+    )
+
+
 @api_router.post("/status", response_model=StatusCheck)
 async def create_status_check(input: StatusCheckCreate):
     status_dict = input.model_dump()
