@@ -45,7 +45,8 @@ import {
   Eye,
   Clock,
   Settings,
-  Info
+  Info,
+  Upload
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import HistoryPage from "@/pages/HistoryPage";
