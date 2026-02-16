@@ -119,15 +119,19 @@ function DiscrepancyItem({ field, label, original, google, resolved, onResolve }
   );
 }
 
-// Import Location Card
+// Import Location Card — gallery view matching search results
 function ImportCard({ item, index, isSelected, onSelect, onResolve, onGenerateDesc, generatingDesc, onChangeType }) {
   const [expanded, setExpanded] = useState(false);
   const [typeOpen, setTypeOpen] = useState(false);
+  const [imgErrors, setImgErrors] = useState({});
   const loc = item.original;
   const hasDiscreps = Object.keys(item.discrepancies || {}).length > 0;
-  const mainImage = loc.images?.[0];
+  const images = loc.images || [];
+  const hasImages = images.length > 0;
   const currentType = EXPERIENCE_TYPES.find(t => t.id === loc.experience_type) || EXPERIENCE_TYPES[0];
   const TypeIcon = currentType.icon;
+
+  const handleImgError = (key) => setImgErrors(prev => ({ ...prev, [key]: true }));
 
   return (
     <Card
@@ -136,141 +140,206 @@ function ImportCard({ item, index, isSelected, onSelect, onResolve, onGenerateDe
       } ${!loc.description ? "ring-2 ring-yellow-400" : ""}`}
       data-testid={`import-card-${index}`}
     >
-      {/* Header with checkbox + status */}
-      <div className="flex items-center justify-between p-3 bg-secondary/30 border-b">
-        <div className="flex items-center gap-2">
-          <Checkbox
-            checked={isSelected}
-            onCheckedChange={() => onSelect(item.id)}
-            className="h-4 w-4"
-            data-testid={`import-select-${index}`}
-          />
-          <span className="font-medium text-sm truncate max-w-[200px]">{loc.name}</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          {item.matched ? (
-            <Badge variant="outline" className="text-xs bg-emerald-50 text-emerald-700 border-emerald-200">
-              <CheckCircle2 className="w-3 h-3 mr-1" /> Matched
-            </Badge>
+      {/* Image Gallery (matching search card layout) */}
+      <div className="relative">
+        {/* Main Image */}
+        <div className="relative h-44 bg-secondary overflow-hidden">
+          {hasImages && !imgErrors["main"] ? (
+            <img
+              src={images[0]}
+              alt={loc.name}
+              className="w-full h-full object-cover"
+              onError={() => handleImgError("main")}
+              loading="lazy"
+            />
           ) : (
-            <Badge variant="outline" className="text-xs bg-gray-50 text-gray-500 border-gray-200">
-              Not Found
-            </Badge>
-          )}
-          {hasDiscreps && (
-            <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700 border-amber-200">
-              <AlertTriangle className="w-3 h-3 mr-1" /> {Object.keys(item.discrepancies).length} Discrepancies
-            </Badge>
-          )}
-          {!loc.description && (
-            <Badge variant="outline" className="text-xs bg-yellow-50 text-yellow-700 border-yellow-300">
-              No Description
-            </Badge>
-          )}
-        </div>
-      </div>
-
-      {/* Experience Type Selector */}
-      <div className="px-3 pt-2 relative">
-        <button
-          onClick={() => setTypeOpen(!typeOpen)}
-          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${currentType.color} hover:opacity-80`}
-          data-testid={`experience-type-btn-${index}`}
-        >
-          <TypeIcon className="w-3 h-3" />
-          {currentType.id ? currentType.name : "Set Experience Type"}
-          <ChevronDown className="w-3 h-3" />
-        </button>
-        {typeOpen && (
-          <div className="absolute z-20 mt-1 bg-white border border-border rounded-lg shadow-lg py-1 min-w-[180px]" data-testid={`experience-type-dropdown-${index}`}>
-            {EXPERIENCE_TYPES.map((type) => {
-              const Icon = type.icon;
-              return (
-                <button
-                  key={type.id}
-                  onClick={() => { onChangeType(item.id, type.id); setTypeOpen(false); }}
-                  className={`w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-secondary transition-colors ${
-                    loc.experience_type === type.id ? "bg-secondary font-medium" : ""
-                  }`}
-                  data-testid={`experience-type-option-${type.id || "none"}-${index}`}
-                >
-                  <Icon className="w-3 h-3" />
-                  {type.name}
-                </button>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* Image + Details */}
-      <div className="flex">
-        {mainImage && (
-          <div className="w-32 h-32 shrink-0 bg-secondary">
-            <img src={mainImage} alt={loc.name} className="w-full h-full object-cover" onError={(e) => { e.target.style.display = "none"; }} />
-          </div>
-        )}
-        <CardContent className="p-3 flex-1 space-y-2 min-w-0">
-          <div className="flex items-start gap-1.5 text-xs text-muted-foreground">
-            <MapPin className="w-3 h-3 shrink-0 mt-0.5" />
-            <span className="line-clamp-1">{loc.address || "No address"}</span>
-          </div>
-          {loc.description ? (
-            <p className="text-xs text-muted-foreground line-clamp-2">{loc.description}</p>
-          ) : (
-            <div className="flex items-center gap-2">
-              <p className="text-xs text-yellow-600 italic">No description</p>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-6 text-xs px-2"
-                onClick={() => onGenerateDesc(item.id)}
-                disabled={generatingDesc}
-                data-testid={`generate-desc-${index}`}
-              >
-                {generatingDesc ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3 mr-1" />}
-                Generate
-              </Button>
+            <div className="w-full h-full flex flex-col items-center justify-center bg-secondary/60 text-muted-foreground">
+              <ImageOff className="w-8 h-8 mb-1" />
+              <span className="text-xs">{hasImages ? "Image failed to load" : "No images"}</span>
             </div>
           )}
-          <div className="flex flex-wrap gap-2 text-xs">
-            {loc.website && (
-              <a href={loc.website} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline">
-                <Globe className="w-3 h-3" /> Website <ExternalLink className="w-2.5 h-2.5" />
-              </a>
+
+          {/* Overlay badges */}
+          <div className="absolute top-2.5 left-2.5 z-10">
+            <Checkbox
+              checked={isSelected}
+              onCheckedChange={() => onSelect(item.id)}
+              className="h-5 w-5 bg-white/90 backdrop-blur-sm border-2 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+              data-testid={`import-select-${index}`}
+            />
+          </div>
+
+          {/* Status badges */}
+          <div className="absolute top-2.5 left-11 z-10 flex items-center gap-1.5">
+            {item.matched ? (
+              <span className="px-2 py-0.5 text-xs font-medium bg-emerald-500 text-white rounded-full shadow-sm">Matched</span>
+            ) : (
+              <span className="px-2 py-0.5 text-xs font-medium bg-gray-500/80 text-white rounded-full shadow-sm">Not Found</span>
             )}
-            {loc.phone && (
-              <span className="inline-flex items-center gap-1 text-muted-foreground">
-                <Phone className="w-3 h-3" /> {loc.phone}
-              </span>
-            )}
-            {loc.instagram && (
-              <a href={loc.instagram} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-pink-600 hover:underline">
-                <Instagram className="w-3 h-3" /> Instagram <ExternalLink className="w-2.5 h-2.5" />
-              </a>
-            )}
-            {loc.rating && (
-              <span className="inline-flex items-center gap-1 text-amber-600">
-                <Star className="w-3 h-3 fill-amber-400" /> {loc.rating}
+            {hasDiscreps && (
+              <span className="px-2 py-0.5 text-xs font-medium bg-amber-500 text-white rounded-full shadow-sm">
+                {Object.keys(item.discrepancies).length} Discrepancies
               </span>
             )}
           </div>
-        </CardContent>
+
+          {/* No Description badge center */}
+          {!loc.description && (
+            <div className="absolute top-2.5 left-1/2 -translate-x-1/2 z-10">
+              <span className="px-2 py-0.5 text-xs font-medium bg-yellow-400 text-yellow-900 rounded-full shadow-sm">No Description</span>
+            </div>
+          )}
+
+          {/* Rating */}
+          {loc.rating != null && (
+            <div className="absolute top-2.5 right-2.5 bg-white/90 backdrop-blur-sm px-2 py-1 rounded flex items-center gap-1">
+              <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+              <span className="text-sm font-medium">{Number(loc.rating).toFixed(1)}</span>
+            </div>
+          )}
+
+          {/* Image count indicator */}
+          {hasImages && (
+            <div className="absolute bottom-2 right-2.5 bg-black/60 text-white px-2 py-0.5 rounded text-xs backdrop-blur-sm">
+              {images.length} image{images.length !== 1 ? "s" : ""}
+            </div>
+          )}
+        </div>
+
+        {/* Thumbnail strip (like search results) */}
+        {images.length > 1 && (
+          <div className="grid grid-cols-3 gap-px bg-border">
+            {images.slice(1, 4).map((img, idx) => (
+              <div key={idx} className="h-14 bg-secondary">
+                {imgErrors[`thumb-${idx}`] ? (
+                  <div className="w-full h-full flex items-center justify-center bg-secondary">
+                    <ImageOff className="w-3 h-3 text-muted-foreground" />
+                  </div>
+                ) : (
+                  <img
+                    src={img}
+                    alt={`${loc.name} ${idx + 2}`}
+                    className="w-full h-full object-cover"
+                    onError={() => handleImgError(`thumb-${idx}`)}
+                    loading="lazy"
+                  />
+                )}
+              </div>
+            ))}
+            {/* Fill remaining slots with empty divs */}
+            {images.length < 4 && [...Array(4 - images.length)].map((_, idx) => (
+              <div key={`empty-${idx}`} className="h-14 bg-secondary/40" />
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* Discrepancies */}
+      {/* Card Content */}
+      <CardContent className="p-4 space-y-3">
+        {/* Name */}
+        <h3 className="font-semibold text-base leading-tight line-clamp-2" style={{ fontFamily: "IBM Plex Sans, sans-serif" }}>
+          {loc.name}
+        </h3>
+
+        {/* Experience Type Selector */}
+        <div className="relative">
+          <button
+            onClick={() => setTypeOpen(!typeOpen)}
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${currentType.color} hover:opacity-80`}
+            data-testid={`experience-type-btn-${index}`}
+          >
+            <TypeIcon className="w-3 h-3" />
+            {currentType.id ? currentType.name : "Set Experience Type"}
+            <ChevronDown className="w-3 h-3" />
+          </button>
+          {typeOpen && (
+            <div className="absolute z-20 mt-1 bg-white border border-border rounded-lg shadow-lg py-1 min-w-[180px]" data-testid={`experience-type-dropdown-${index}`}>
+              {EXPERIENCE_TYPES.map((type) => {
+                const Icon = type.icon;
+                return (
+                  <button
+                    key={type.id}
+                    onClick={() => { onChangeType(item.id, type.id); setTypeOpen(false); }}
+                    className={`w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-secondary transition-colors ${
+                      loc.experience_type === type.id ? "bg-secondary font-medium" : ""
+                    }`}
+                    data-testid={`experience-type-option-${type.id || "none"}-${index}`}
+                  >
+                    <Icon className="w-3 h-3" />
+                    {type.name}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Address */}
+        <div className="flex items-start gap-2 text-sm text-muted-foreground">
+          <MapPin className="w-4 h-4 shrink-0 mt-0.5" />
+          <span className="line-clamp-2">{loc.address || <span className="italic">No address</span>}</span>
+        </div>
+
+        {/* Description or Generate button */}
+        {loc.description ? (
+          <p className="text-sm text-muted-foreground line-clamp-3">{loc.description}</p>
+        ) : (
+          <div className="flex items-center gap-2 py-1">
+            <p className="text-sm text-yellow-600 italic">No description</p>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 text-xs px-3"
+              onClick={() => onGenerateDesc(item.id)}
+              disabled={generatingDesc}
+              data-testid={`generate-desc-${index}`}
+            >
+              {generatingDesc ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Sparkles className="w-3 h-3 mr-1" />}
+              Generate
+            </Button>
+          </div>
+        )}
+
+        {/* Coordinates */}
+        {(loc.latitude !== 0 || loc.longitude !== 0) && (
+          <div className="text-mono text-xs text-muted-foreground bg-secondary/50 px-2 py-1 rounded">
+            {Number(loc.latitude).toFixed(6)}, {Number(loc.longitude).toFixed(6)}
+          </div>
+        )}
+
+        {/* Links & Info row */}
+        <div className="flex flex-wrap gap-3 pt-1">
+          {loc.website && (
+            <a href={loc.website} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm text-primary hover:underline" data-testid={`import-website-${index}`}>
+              <Globe className="w-3 h-3" /> Website <ExternalLink className="w-3 h-3" />
+            </a>
+          )}
+          {loc.phone && (
+            <span className="inline-flex items-center gap-1 text-sm text-muted-foreground" data-testid={`import-phone-${index}`}>
+              <Phone className="w-3 h-3" /> {loc.phone}
+            </span>
+          )}
+          {loc.instagram && (
+            <a href={loc.instagram} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm text-pink-600 hover:underline" data-testid={`import-instagram-${index}`}>
+              <Instagram className="w-3 h-3" /> Instagram <ExternalLink className="w-3 h-3" />
+            </a>
+          )}
+        </div>
+      </CardContent>
+
+      {/* Discrepancies panel */}
       {hasDiscreps && (
         <div className="border-t">
           <button
             onClick={() => setExpanded(!expanded)}
-            className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium text-amber-700 hover:bg-amber-50 transition-colors"
+            className="w-full flex items-center justify-between px-4 py-2.5 text-xs font-medium text-amber-700 hover:bg-amber-50 transition-colors"
             data-testid={`toggle-discrep-${index}`}
           >
             <span>Review {Object.keys(item.discrepancies).length} discrepancies</span>
             {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </button>
           {expanded && (
-            <div className="p-3 space-y-2 bg-white">
+            <div className="p-3 space-y-2 bg-white border-t">
               {Object.entries(item.discrepancies).map(([field, data]) => (
                 <DiscrepancyItem
                   key={field}
