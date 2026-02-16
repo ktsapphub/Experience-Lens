@@ -423,6 +423,16 @@ export default function ImportPage() {
     toast.success(`Generated ${count} descriptions`);
   }, [locations]);
 
+  const handleChangeType = useCallback((itemId, typeId) => {
+    setLocations((prev) =>
+      prev.map((item) =>
+        item.id === itemId
+          ? { ...item, original: { ...item.original, experience_type: typeId } }
+          : item
+      )
+    );
+  }, []);
+
   const toggleSelect = (id) => {
     setSelectedIds((prev) => {
       const s = new Set(prev);
