@@ -10,11 +10,21 @@ import {
   Search, Download, MapPin, Globe, Instagram, Star, Loader2,
   Upload, FileSpreadsheet, CheckCircle2, AlertTriangle, X,
   Map, Clock, Settings, Phone, ExternalLink, ImageOff, Sparkles,
-  ChevronDown, ChevronUp, RefreshCw, ArrowRight, Info
+  ChevronDown, ChevronUp, RefreshCw, ArrowRight, Info,
+  Mountain, Palette, Music, UtensilsCrossed
 } from "lucide-react";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
+
+const EXPERIENCE_TYPES = [
+  { id: "", name: "None", icon: X, color: "bg-gray-100 text-gray-500" },
+  { id: "Thrill Seeking", name: "Thrill Seeking", icon: Mountain, color: "bg-orange-100 text-orange-700" },
+  { id: "Super Chill", name: "Super Chill", icon: Sparkles, color: "bg-emerald-100 text-emerald-700" },
+  { id: "Creative", name: "Creative", icon: Palette, color: "bg-purple-100 text-purple-700" },
+  { id: "Pure Entertainment", name: "Pure Entertainment", icon: Music, color: "bg-pink-100 text-pink-700" },
+  { id: "Foodie", name: "Foodie", icon: UtensilsCrossed, color: "bg-red-100 text-red-700" },
+];
 
 // File Upload Area
 function UploadArea({ onFileSelect, loading }) {
