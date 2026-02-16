@@ -11,30 +11,22 @@ Build a Google Maps information scraper that pulls location data (Name, Address,
 
 ## Pages
 1. **Search** — Category/location-based search with results grid, pagination, export
-2. **Import** — CSV/Excel upload, experience type assignment, cross-check vs Google, discrepancy resolution, AI description generation, export
+2. **Import** — CSV/Excel upload, gallery-style cards, experience type assignment, cross-check vs Google, discrepancy resolution, AI description generation, export
 3. **History** — Past search records with expandable results
 4. **Config** — System info and experience type keyword management
 
 ## What's Been Implemented
 
-### Backend Endpoints
-- POST /api/places/search — Search by category+location or specific places (category optional)
-- POST /api/places/export-csv — CSV export with Experience Type, Phone, IG handle
-- POST /api/import/upload — Parse CSV/Excel file
-- POST /api/import/cross-check — Cross-check locations against Google Places
-- POST /api/import/generate-description — AI description generation (Gemini)
-- POST /api/import/export-csv — Export enriched import data with experience type
-- GET /api/categories, /api/regions, /api/history, /api/config
-- PUT /api/config/category, POST /api/config/reset
-- POST /api/auth/register, /api/auth/login
-
 ### Import Page Features
 - CSV/Excel upload with drag-and-drop
+- Gallery-style cards matching search results (main image + thumbnail strip)
+- Image count badge, "No images" placeholder when empty
 - Experience Type column: reads from import, editable dropdown per card, carries to export
-- Cross-check against Google Places (auto-fills missing data)
-- Discrepancy resolution (side-by-side original vs Google)
+- Cross-check against Google Places (auto-fills missing data, never overwrites valid data)
+- Discrepancy resolution (side-by-side original vs Google, including images)
 - AI description generation (Gemini, max 500 chars)
-- Export All / Export Selected with experience type column
+- All fields visible: images, name, type, address, description, coordinates, website, phone, Instagram, rating
+- Export All / Export Selected with consistent CSV format
 
 ## Completed Features (All Tested)
 - [x] Google Places API integration & search
@@ -44,8 +36,9 @@ Build a Google Maps information scraper that pulls location data (Name, Address,
 - [x] Search progress indicator
 - [x] Specific Places search without category
 - [x] Phone number in results and exports
-- [x] Import page: upload, cross-check, discrepancy resolution, AI descriptions, export
-- [x] Experience Type field on import cards (editable dropdown, carries to export)
+- [x] Import page with gallery-style cards matching search results
+- [x] Cross-check fills gaps without overwriting valid info
+- [x] Experience Type field (editable dropdown, carries to export)
 - [x] Navigation across all pages (Search, Import, History, Config)
 
 ## Prioritized Backlog
