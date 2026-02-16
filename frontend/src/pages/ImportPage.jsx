@@ -611,6 +611,7 @@ export default function ImportPage() {
                   onResolve={handleResolve}
                   onGenerateDesc={handleGenerateDesc}
                   generatingDesc={generatingId === item.id}
+                  onChangeType={handleChangeType}
                 />
               ))}
             </div>
