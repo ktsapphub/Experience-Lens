@@ -11,7 +11,7 @@ Build a Google Maps information scraper that pulls location data (Name, Address,
 
 ## Pages
 1. **Search** — Category/location-based search with results grid, pagination, export
-2. **Import** — CSV/Excel upload, cross-check vs Google, discrepancy resolution, AI description generation, export
+2. **Import** — CSV/Excel upload, experience type assignment, cross-check vs Google, discrepancy resolution, AI description generation, export
 3. **History** — Past search records with expandable results
 4. **Config** — System info and experience type keyword management
 
@@ -23,23 +23,18 @@ Build a Google Maps information scraper that pulls location data (Name, Address,
 - POST /api/import/upload — Parse CSV/Excel file
 - POST /api/import/cross-check — Cross-check locations against Google Places
 - POST /api/import/generate-description — AI description generation (Gemini)
-- POST /api/import/export-csv — Export enriched import data
+- POST /api/import/export-csv — Export enriched import data with experience type
 - GET /api/categories, /api/regions, /api/history, /api/config
 - PUT /api/config/category, POST /api/config/reset
 - POST /api/auth/register, /api/auth/login
-- Instagram scraping from business websites (concurrent async)
 
-### Key Features
-- 5 experience categories with tooltips
-- 3 search methods: City/Zip, US Region, Specific Places (with optional state codes)
-- Category optional for Specific Places search (with info tooltip)
-- Search progress indicator (3 phases)
-- Results grid with images, Instagram links, phone numbers, ratings
-- Yellow border for missing descriptions, broken image handling
-- New/Seen badges, Remove, Selection checkboxes
-- CSV/Excel import with cross-check and discrepancy resolution
+### Import Page Features
+- CSV/Excel upload with drag-and-drop
+- Experience Type column: reads from import, editable dropdown per card, carries to export
+- Cross-check against Google Places (auto-fills missing data)
+- Discrepancy resolution (side-by-side original vs Google)
 - AI description generation (Gemini, max 500 chars)
-- Export All / Export Selected to CSV
+- Export All / Export Selected with experience type column
 
 ## Completed Features (All Tested)
 - [x] Google Places API integration & search
@@ -50,6 +45,7 @@ Build a Google Maps information scraper that pulls location data (Name, Address,
 - [x] Specific Places search without category
 - [x] Phone number in results and exports
 - [x] Import page: upload, cross-check, discrepancy resolution, AI descriptions, export
+- [x] Experience Type field on import cards (editable dropdown, carries to export)
 - [x] Navigation across all pages (Search, Import, History, Config)
 
 ## Prioritized Backlog
