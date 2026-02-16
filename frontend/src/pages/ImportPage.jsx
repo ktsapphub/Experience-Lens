@@ -430,9 +430,17 @@ export default function ImportPage() {
         const newResolutions = { ...item.resolutions, [field]: choice };
         const newOriginal = { ...item.original };
         if (choice === "google" && item.google) {
-          newOriginal[field] = item.google[field];
+          if (field === "images") {
+            newOriginal.images = item.google.images || [];
+          } else {
+            newOriginal[field] = item.google[field];
+          }
         } else if (choice === "original" && item.discrepancies[field]) {
-          newOriginal[field] = item.discrepancies[field].original;
+          if (field === "images") {
+            // Keep original images as-is (may be empty)
+          } else {
+            newOriginal[field] = item.discrepancies[field].original;
+          }
         }
         return { ...item, resolutions: newResolutions, original: newOriginal };
       })
