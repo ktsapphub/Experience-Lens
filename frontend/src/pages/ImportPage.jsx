@@ -120,11 +120,14 @@ function DiscrepancyItem({ field, label, original, google, resolved, onResolve }
 }
 
 // Import Location Card
-function ImportCard({ item, index, isSelected, onSelect, onResolve, onGenerateDesc, generatingDesc }) {
+function ImportCard({ item, index, isSelected, onSelect, onResolve, onGenerateDesc, generatingDesc, onChangeType }) {
   const [expanded, setExpanded] = useState(false);
+  const [typeOpen, setTypeOpen] = useState(false);
   const loc = item.original;
   const hasDiscreps = Object.keys(item.discrepancies || {}).length > 0;
   const mainImage = loc.images?.[0];
+  const currentType = EXPERIENCE_TYPES.find(t => t.id === loc.experience_type) || EXPERIENCE_TYPES[0];
+  const TypeIcon = currentType.icon;
 
   return (
     <Card
@@ -165,6 +168,39 @@ function ImportCard({ item, index, isSelected, onSelect, onResolve, onGenerateDe
             </Badge>
           )}
         </div>
+      </div>
+
+      {/* Experience Type Selector */}
+      <div className="px-3 pt-2 relative">
+        <button
+          onClick={() => setTypeOpen(!typeOpen)}
+          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${currentType.color} hover:opacity-80`}
+          data-testid={`experience-type-btn-${index}`}
+        >
+          <TypeIcon className="w-3 h-3" />
+          {currentType.id ? currentType.name : "Set Experience Type"}
+          <ChevronDown className="w-3 h-3" />
+        </button>
+        {typeOpen && (
+          <div className="absolute z-20 mt-1 bg-white border border-border rounded-lg shadow-lg py-1 min-w-[180px]" data-testid={`experience-type-dropdown-${index}`}>
+            {EXPERIENCE_TYPES.map((type) => {
+              const Icon = type.icon;
+              return (
+                <button
+                  key={type.id}
+                  onClick={() => { onChangeType(item.id, type.id); setTypeOpen(false); }}
+                  className={`w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-secondary transition-colors ${
+                    loc.experience_type === type.id ? "bg-secondary font-medium" : ""
+                  }`}
+                  data-testid={`experience-type-option-${type.id || "none"}-${index}`}
+                >
+                  <Icon className="w-3 h-3" />
+                  {type.name}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Image + Details */}
