@@ -11,7 +11,7 @@ import {
   Upload, FileSpreadsheet, CheckCircle2, AlertTriangle, X,
   Map, Clock, Settings, Phone, ExternalLink, ImageOff, Sparkles,
   ChevronDown, ChevronUp, RefreshCw, ArrowRight, Info,
-  Mountain, Palette, Music, UtensilsCrossed
+  Mountain, Palette, Music, UtensilsCrossed, DollarSign, Image as ImageIcon, Eye
 } from "lucide-react";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -25,6 +25,85 @@ const EXPERIENCE_TYPES = [
   { id: "Pure Entertainment", name: "Pure Entertainment", icon: Music, color: "bg-pink-100 text-pink-700" },
   { id: "Foodie", name: "Foodie", icon: UtensilsCrossed, color: "bg-red-100 text-red-700" },
 ];
+
+const PRICE_RANGES = [
+  { id: "", label: "Not Set" },
+  { id: "$", label: "$ ($0 – $50)" },
+  { id: "$$", label: "$$ ($51 – $100)" },
+  { id: "$$$", label: "$$$ ($101+)" },
+];
+
+const FIX_FIELDS = [
+  { id: "name", label: "Name", icon: FileSpreadsheet },
+  { id: "address", label: "Address", icon: MapPin },
+  { id: "latitude", label: "Latitude", icon: MapPin },
+  { id: "longitude", label: "Longitude", icon: MapPin },
+  { id: "description", label: "Description", icon: FileSpreadsheet },
+  { id: "phone", label: "Phone", icon: Phone },
+  { id: "website", label: "Website", icon: Globe },
+  { id: "instagram", label: "Instagram", icon: Instagram },
+  { id: "price_range", label: "Price Range", icon: DollarSign },
+  { id: "rating", label: "Rating", icon: Star },
+  { id: "images", label: "Images", icon: ImageIcon },
+];
+
+// Field Selection Checklist
+function FieldSelector({ selected, onChange }) {
+  const toggleField = (fieldId) => {
+    onChange(prev => prev.includes(fieldId) ? prev.filter(f => f !== fieldId) : [...prev, fieldId]);
+  };
+  const selectAll = () => onChange(FIX_FIELDS.map(f => f.id));
+  const clearAll = () => onChange([]);
+
+  return (
+    <div className="space-y-3" data-testid="field-selector">
+      <div className="flex items-center justify-between">
+        <p className="text-sm font-medium text-muted-foreground">Select which fields to cross-check & fix:</p>
+        <div className="flex gap-2">
+          <button onClick={selectAll} className="text-xs text-primary hover:underline" data-testid="select-all-fields">Select All</button>
+          <span className="text-xs text-muted-foreground">|</span>
+          <button onClick={clearAll} className="text-xs text-muted-foreground hover:underline" data-testid="clear-all-fields">Clear</button>
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {FIX_FIELDS.map(field => {
+          const Icon = field.icon;
+          const isActive = selected.includes(field.id);
+          return (
+            <button
+              key={field.id}
+              onClick={() => toggleField(field.id)}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                isActive
+                  ? "bg-primary text-white border-primary shadow-sm"
+                  : "bg-white text-muted-foreground border-border hover:border-primary/40"
+              }`}
+              data-testid={`field-toggle-${field.id}`}
+            >
+              <Icon className="w-3 h-3" />
+              {field.label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// Image Preview Modal
+function ImagePreview({ url, onClose }) {
+  if (!url) return null;
+  return (
+    <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-8" onClick={onClose} data-testid="image-preview-modal">
+      <div className="relative max-w-3xl max-h-[80vh]" onClick={e => e.stopPropagation()}>
+        <button onClick={onClose} className="absolute -top-3 -right-3 w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-lg hover:bg-gray-100 z-10">
+          <X className="w-4 h-4" />
+        </button>
+        <img src={url} alt="Preview" className="max-w-full max-h-[80vh] rounded-lg shadow-2xl object-contain" />
+      </div>
+    </div>
+  );
+}
 
 // File Upload Area
 function UploadArea({ onFileSelect, loading }) {
@@ -120,9 +199,10 @@ function DiscrepancyItem({ field, label, original, google, resolved, onResolve }
 }
 
 // Import Location Card — gallery view matching search results
-function ImportCard({ item, index, isSelected, onSelect, onResolve, onGenerateDesc, generatingDesc, onChangeType }) {
+function ImportCard({ item, index, isSelected, onSelect, onResolve, onGenerateDesc, generatingDesc, onChangeType, onChangePriceRange, onPreviewImage }) {
   const [expanded, setExpanded] = useState(false);
   const [typeOpen, setTypeOpen] = useState(false);
+  const [priceOpen, setPriceOpen] = useState(false);
   const [imgErrors, setImgErrors] = useState({});
   const loc = item.original;
   const hasDiscreps = Object.keys(item.discrepancies || {}).length > 0;
@@ -130,6 +210,14 @@ function ImportCard({ item, index, isSelected, onSelect, onResolve, onGenerateDe
   const hasImages = images.length > 0;
   const currentType = EXPERIENCE_TYPES.find(t => t.id === loc.experience_type) || EXPERIENCE_TYPES[0];
   const TypeIcon = currentType.icon;
+  const currentPrice = PRICE_RANGES.find(p => p.id === loc.price_range) || PRICE_RANGES[0];
+
+  // Extract IG handle for display
+  const igHandle = (() => {
+    if (!loc.instagram) return "";
+    const match = loc.instagram.match(/instagram\.com\/([a-zA-Z0-9_.]+)/i);
+    return match ? `@${match[1]}` : loc.instagram;
+  })();
 
   const handleImgError = (key) => setImgErrors(prev => ({ ...prev, [key]: true }));
 
@@ -140,18 +228,16 @@ function ImportCard({ item, index, isSelected, onSelect, onResolve, onGenerateDe
       } ${!loc.description ? "ring-2 ring-yellow-400" : ""}`}
       data-testid={`import-card-${index}`}
     >
-      {/* Image Gallery (matching search card layout) */}
+      {/* Image Gallery */}
       <div className="relative">
-        {/* Main Image */}
         <div className="relative h-44 bg-secondary overflow-hidden">
           {hasImages && !imgErrors["main"] ? (
-            <img
-              src={images[0]}
-              alt={loc.name}
-              className="w-full h-full object-cover"
-              onError={() => handleImgError("main")}
-              loading="lazy"
-            />
+            <div className="relative w-full h-full group cursor-pointer" onClick={() => onPreviewImage(images[0])}>
+              <img src={images[0]} alt={loc.name} className="w-full h-full object-cover" onError={() => handleImgError("main")} loading="lazy" />
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                <Eye className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-lg" />
+              </div>
+            </div>
           ) : (
             <div className="w-full h-full flex flex-col items-center justify-center bg-secondary/60 text-muted-foreground">
               <ImageOff className="w-8 h-8 mb-1" />
@@ -161,15 +247,8 @@ function ImportCard({ item, index, isSelected, onSelect, onResolve, onGenerateDe
 
           {/* Overlay badges */}
           <div className="absolute top-2.5 left-2.5 z-10">
-            <Checkbox
-              checked={isSelected}
-              onCheckedChange={() => onSelect(item.id)}
-              className="h-5 w-5 bg-white/90 backdrop-blur-sm border-2 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
-              data-testid={`import-select-${index}`}
-            />
+            <Checkbox checked={isSelected} onCheckedChange={() => onSelect(item.id)} className="h-5 w-5 bg-white/90 backdrop-blur-sm border-2 data-[state=checked]:bg-primary data-[state=checked]:border-primary" data-testid={`import-select-${index}`} />
           </div>
-
-          {/* Status badges */}
           <div className="absolute top-2.5 left-11 z-10 flex items-center gap-1.5">
             {item.matched ? (
               <span className="px-2 py-0.5 text-xs font-medium bg-emerald-500 text-white rounded-full shadow-sm">Matched</span>
@@ -177,56 +256,53 @@ function ImportCard({ item, index, isSelected, onSelect, onResolve, onGenerateDe
               <span className="px-2 py-0.5 text-xs font-medium bg-gray-500/80 text-white rounded-full shadow-sm">Not Found</span>
             )}
             {hasDiscreps && (
-              <span className="px-2 py-0.5 text-xs font-medium bg-amber-500 text-white rounded-full shadow-sm">
-                {Object.keys(item.discrepancies).length} Discrepancies
-              </span>
+              <span className="px-2 py-0.5 text-xs font-medium bg-amber-500 text-white rounded-full shadow-sm">{Object.keys(item.discrepancies).length} Discrepancies</span>
             )}
           </div>
-
-          {/* No Description badge center */}
           {!loc.description && (
             <div className="absolute top-2.5 left-1/2 -translate-x-1/2 z-10">
               <span className="px-2 py-0.5 text-xs font-medium bg-yellow-400 text-yellow-900 rounded-full shadow-sm">No Description</span>
             </div>
           )}
-
-          {/* Rating */}
-          {loc.rating != null && (
-            <div className="absolute top-2.5 right-2.5 bg-white/90 backdrop-blur-sm px-2 py-1 rounded flex items-center gap-1">
-              <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-              <span className="text-sm font-medium">{Number(loc.rating).toFixed(1)}</span>
-            </div>
-          )}
-
-          {/* Image count indicator */}
+          <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5">
+            {loc.rating != null && (
+              <div className="bg-white/90 backdrop-blur-sm px-2 py-1 rounded flex items-center gap-1">
+                <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                <span className="text-sm font-medium">{Number(loc.rating).toFixed(1)}</span>
+              </div>
+            )}
+            {loc.price_range && (
+              <div className="bg-white/90 backdrop-blur-sm px-2 py-1 rounded">
+                <span className="text-sm font-semibold text-emerald-700">{loc.price_range}</span>
+              </div>
+            )}
+          </div>
           {hasImages && (
-            <div className="absolute bottom-2 right-2.5 bg-black/60 text-white px-2 py-0.5 rounded text-xs backdrop-blur-sm">
-              {images.length} image{images.length !== 1 ? "s" : ""}
+            <div className="absolute bottom-2 right-2.5 flex items-center gap-1.5">
+              <div className="bg-emerald-500 text-white px-2 py-0.5 rounded text-xs backdrop-blur-sm flex items-center gap-1">
+                <ImageIcon className="w-3 h-3" /> {images.length} image{images.length !== 1 ? "s" : ""}
+              </div>
             </div>
           )}
         </div>
 
-        {/* Thumbnail strip (like search results) */}
+        {/* Thumbnail strip with preview */}
         {images.length > 1 && (
           <div className="grid grid-cols-3 gap-px bg-border">
             {images.slice(1, 4).map((img, idx) => (
-              <div key={idx} className="h-14 bg-secondary">
+              <div key={idx} className="h-14 bg-secondary relative group cursor-pointer" onClick={() => !imgErrors[`thumb-${idx}`] && onPreviewImage(img)}>
                 {imgErrors[`thumb-${idx}`] ? (
-                  <div className="w-full h-full flex items-center justify-center bg-secondary">
-                    <ImageOff className="w-3 h-3 text-muted-foreground" />
-                  </div>
+                  <div className="w-full h-full flex items-center justify-center bg-secondary"><ImageOff className="w-3 h-3 text-muted-foreground" /></div>
                 ) : (
-                  <img
-                    src={img}
-                    alt={`${loc.name} ${idx + 2}`}
-                    className="w-full h-full object-cover"
-                    onError={() => handleImgError(`thumb-${idx}`)}
-                    loading="lazy"
-                  />
+                  <>
+                    <img src={img} alt={`${loc.name} ${idx + 2}`} className="w-full h-full object-cover" onError={() => handleImgError(`thumb-${idx}`)} loading="lazy" />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
+                      <Eye className="w-3 h-3 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </div>
+                  </>
                 )}
               </div>
             ))}
-            {/* Fill remaining slots with empty divs */}
             {images.length < 4 && [...Array(4 - images.length)].map((_, idx) => (
               <div key={`empty-${idx}`} className="h-14 bg-secondary/40" />
             ))}
@@ -236,42 +312,48 @@ function ImportCard({ item, index, isSelected, onSelect, onResolve, onGenerateDe
 
       {/* Card Content */}
       <CardContent className="p-4 space-y-3">
-        {/* Name */}
-        <h3 className="font-semibold text-base leading-tight line-clamp-2" style={{ fontFamily: "IBM Plex Sans, sans-serif" }}>
-          {loc.name}
-        </h3>
+        <h3 className="font-semibold text-base leading-tight line-clamp-2" style={{ fontFamily: "IBM Plex Sans, sans-serif" }}>{loc.name}</h3>
 
-        {/* Experience Type Selector */}
-        <div className="relative">
-          <button
-            onClick={() => setTypeOpen(!typeOpen)}
-            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${currentType.color} hover:opacity-80`}
-            data-testid={`experience-type-btn-${index}`}
-          >
-            <TypeIcon className="w-3 h-3" />
-            {currentType.id ? currentType.name : "Set Experience Type"}
-            <ChevronDown className="w-3 h-3" />
-          </button>
-          {typeOpen && (
-            <div className="absolute z-20 mt-1 bg-white border border-border rounded-lg shadow-lg py-1 min-w-[180px]" data-testid={`experience-type-dropdown-${index}`}>
-              {EXPERIENCE_TYPES.map((type) => {
-                const Icon = type.icon;
-                return (
-                  <button
-                    key={type.id}
-                    onClick={() => { onChangeType(item.id, type.id); setTypeOpen(false); }}
-                    className={`w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-secondary transition-colors ${
-                      loc.experience_type === type.id ? "bg-secondary font-medium" : ""
-                    }`}
-                    data-testid={`experience-type-option-${type.id || "none"}-${index}`}
-                  >
-                    <Icon className="w-3 h-3" />
-                    {type.name}
+        {/* Type + Price selectors row */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Experience Type */}
+          <div className="relative">
+            <button onClick={() => { setTypeOpen(!typeOpen); setPriceOpen(false); }} className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${currentType.color} hover:opacity-80`} data-testid={`experience-type-btn-${index}`}>
+              <TypeIcon className="w-3 h-3" />
+              {currentType.id ? currentType.name : "Set Category"}
+              <ChevronDown className="w-3 h-3" />
+            </button>
+            {typeOpen && (
+              <div className="absolute z-20 mt-1 bg-white border border-border rounded-lg shadow-lg py-1 min-w-[180px]" data-testid={`experience-type-dropdown-${index}`}>
+                {EXPERIENCE_TYPES.map((type) => {
+                  const Icon = type.icon;
+                  return (
+                    <button key={type.id} onClick={() => { onChangeType(item.id, type.id); setTypeOpen(false); }} className={`w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-secondary transition-colors ${loc.experience_type === type.id ? "bg-secondary font-medium" : ""}`} data-testid={`experience-type-option-${type.id || "none"}-${index}`}>
+                      <Icon className="w-3 h-3" /> {type.name}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Price Range */}
+          <div className="relative">
+            <button onClick={() => { setPriceOpen(!priceOpen); setTypeOpen(false); }} className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${loc.price_range ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-500"} hover:opacity-80`} data-testid={`price-range-btn-${index}`}>
+              <DollarSign className="w-3 h-3" />
+              {loc.price_range || "Set Price"}
+              <ChevronDown className="w-3 h-3" />
+            </button>
+            {priceOpen && (
+              <div className="absolute z-20 mt-1 bg-white border border-border rounded-lg shadow-lg py-1 min-w-[160px]" data-testid={`price-range-dropdown-${index}`}>
+                {PRICE_RANGES.map((pr) => (
+                  <button key={pr.id} onClick={() => { onChangePriceRange(item.id, pr.id); setPriceOpen(false); }} className={`w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-secondary transition-colors ${loc.price_range === pr.id ? "bg-secondary font-medium" : ""}`} data-testid={`price-option-${pr.id || "none"}-${index}`}>
+                    <DollarSign className="w-3 h-3" /> {pr.label}
                   </button>
-                );
-              })}
-            </div>
-          )}
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Address */}
@@ -280,20 +362,13 @@ function ImportCard({ item, index, isSelected, onSelect, onResolve, onGenerateDe
           <span className="line-clamp-2">{loc.address || <span className="italic">No address</span>}</span>
         </div>
 
-        {/* Description or Generate button */}
+        {/* Description */}
         {loc.description ? (
           <p className="text-sm text-muted-foreground line-clamp-3">{loc.description}</p>
         ) : (
           <div className="flex items-center gap-2 py-1">
             <p className="text-sm text-yellow-600 italic">No description</p>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-7 text-xs px-3"
-              onClick={() => onGenerateDesc(item.id)}
-              disabled={generatingDesc}
-              data-testid={`generate-desc-${index}`}
-            >
+            <Button variant="outline" size="sm" className="h-7 text-xs px-3" onClick={() => onGenerateDesc(item.id)} disabled={generatingDesc} data-testid={`generate-desc-${index}`}>
               {generatingDesc ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Sparkles className="w-3 h-3 mr-1" />}
               Generate
             </Button>
@@ -321,7 +396,7 @@ function ImportCard({ item, index, isSelected, onSelect, onResolve, onGenerateDe
           )}
           {loc.instagram && (
             <a href={loc.instagram} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm text-pink-600 hover:underline" data-testid={`import-instagram-${index}`}>
-              <Instagram className="w-3 h-3" /> Instagram <ExternalLink className="w-3 h-3" />
+              <Instagram className="w-3 h-3" /> {igHandle} <ExternalLink className="w-3 h-3" />
             </a>
           )}
         </div>
@@ -330,26 +405,14 @@ function ImportCard({ item, index, isSelected, onSelect, onResolve, onGenerateDe
       {/* Discrepancies panel */}
       {hasDiscreps && (
         <div className="border-t">
-          <button
-            onClick={() => setExpanded(!expanded)}
-            className="w-full flex items-center justify-between px-4 py-2.5 text-xs font-medium text-amber-700 hover:bg-amber-50 transition-colors"
-            data-testid={`toggle-discrep-${index}`}
-          >
+          <button onClick={() => setExpanded(!expanded)} className="w-full flex items-center justify-between px-4 py-2.5 text-xs font-medium text-amber-700 hover:bg-amber-50 transition-colors" data-testid={`toggle-discrep-${index}`}>
             <span>Review {Object.keys(item.discrepancies).length} discrepancies</span>
             {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </button>
           {expanded && (
             <div className="p-3 space-y-2 bg-white border-t">
               {Object.entries(item.discrepancies).map(([field, data]) => (
-                <DiscrepancyItem
-                  key={field}
-                  field={field}
-                  label={data.label}
-                  original={data.original}
-                  google={data.google}
-                  resolved={item.resolutions?.[field]}
-                  onResolve={(f, choice) => onResolve(item.id, f, choice)}
-                />
+                <DiscrepancyItem key={field} field={field} label={data.label} original={data.original} google={data.google} resolved={item.resolutions?.[field]} onResolve={(f, choice) => onResolve(item.id, f, choice)} />
               ))}
             </div>
           )}
@@ -368,6 +431,8 @@ export default function ImportPage() {
   const [generatingAll, setGeneratingAll] = useState(false);
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [fileName, setFileName] = useState("");
+  const [fieldsToFix, setFieldsToFix] = useState(FIX_FIELDS.map(f => f.id));
+  const [previewImage, setPreviewImage] = useState(null);
 
   const handleFileSelect = useCallback(async (file) => {
     setUploading(true);
@@ -401,10 +466,14 @@ export default function ImportPage() {
 
   const handleCrossCheck = useCallback(async () => {
     if (locations.length === 0) return;
+    if (fieldsToFix.length === 0) { toast.error("Please select at least one field to fix"); return; }
     setChecking(true);
     try {
       const locsToCheck = locations.map((l) => l.original);
-      const resp = await axios.post(`${API}/import/cross-check`, locsToCheck);
+      const resp = await axios.post(`${API}/import/cross-check`, {
+        locations: locsToCheck,
+        fields_to_fix: fieldsToFix,
+      });
       if (resp.data.success) {
         const results = resp.data.results.map((r) => ({
           ...r,
@@ -421,7 +490,7 @@ export default function ImportPage() {
     } finally {
       setChecking(false);
     }
-  }, [locations]);
+  }, [locations, fieldsToFix]);
 
   const handleResolve = useCallback((itemId, field, choice) => {
     setLocations((prev) =>
@@ -505,6 +574,16 @@ export default function ImportPage() {
       prev.map((item) =>
         item.id === itemId
           ? { ...item, original: { ...item.original, experience_type: typeId } }
+          : item
+      )
+    );
+  }, []);
+
+  const handleChangePriceRange = useCallback((itemId, priceId) => {
+    setLocations((prev) =>
+      prev.map((item) =>
+        item.id === itemId
+          ? { ...item, original: { ...item.original, price_range: priceId } }
           : item
       )
     );
@@ -606,20 +685,23 @@ export default function ImportPage() {
 
         {/* Cross-Check Section */}
         {locations.length > 0 && (
-          <div className="space-y-3">
+          <div className="space-y-4">
             <div className="flex items-center gap-2">
               <span className={`w-7 h-7 rounded-full text-white text-sm font-medium flex items-center justify-center ${crossChecked ? "bg-emerald-500" : "bg-primary"}`}>2</span>
-              <h2 className="text-lg font-medium" style={{ fontFamily: "IBM Plex Sans, sans-serif" }}>Cross-Check & Enrich</h2>
+              <h2 className="text-lg font-medium" style={{ fontFamily: "IBM Plex Sans, sans-serif" }}>What do you want to fix?</h2>
             </div>
+
+            <FieldSelector selected={fieldsToFix} onChange={setFieldsToFix} />
+
             <div className="flex items-center gap-3 flex-wrap">
               <Button
                 onClick={handleCrossCheck}
-                disabled={checking}
+                disabled={checking || fieldsToFix.length === 0}
                 className="bg-primary hover:bg-primary/90"
                 data-testid="cross-check-btn"
               >
                 {checking ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
-                {checking ? "Cross-checking..." : crossChecked ? "Re-check All" : "Cross-Check Against Google"}
+                {checking ? "Cross-checking..." : crossChecked ? "Re-check All" : `Cross-Check ${fieldsToFix.length} Fields`}
               </Button>
               {missingDescCount > 0 && (
                 <Button
@@ -689,12 +771,17 @@ export default function ImportPage() {
                   onGenerateDesc={handleGenerateDesc}
                   generatingDesc={generatingId === item.id}
                   onChangeType={handleChangeType}
+                  onChangePriceRange={handleChangePriceRange}
+                  onPreviewImage={setPreviewImage}
                 />
               ))}
             </div>
           </div>
         )}
       </div>
+
+      {/* Image Preview Modal */}
+      {previewImage && <ImagePreview url={previewImage} onClose={() => setPreviewImage(null)} />}
     </div>
   );
 }

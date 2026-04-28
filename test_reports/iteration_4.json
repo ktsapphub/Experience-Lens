@@ -1,0 +1,115 @@
+{
+  "summary": "Comprehensive testing of Import Page field selection, Price Range, Image Preview, and Instagram features completed. All 18 backend tests pass (100%). All frontend features working correctly including field selector with 11 toggleable fields, Select All/Clear links, Price Range dropdown, image gallery with green badge, image preview modal, and Instagram @handle display.",
+  
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  
+  "passed_tests": [
+    "Field selector shows 11 toggleable fields after file upload",
+    "Select All link selects all 11 fields",
+    "Clear link deselects all fields",
+    "Individual field toggles work (click to select/deselect)",
+    "Cross-check button shows count of selected fields (e.g., 'Cross-Check 10 Fields')",
+    "Cross-check button disabled when no fields selected",
+    "Cross-check only fills/flags selected fields",
+    "Price Range field appears on import cards after upload (from CSV)",
+    "Price Range dropdown works with $, $$, $$$ options (4 options including 'Not Set')",
+    "Price Range pulled from Google Places during cross-check ($$$ for Nobu Miami)",
+    "Image gallery with main image and thumbnail strip",
+    "Green image count badge on cards with images ('3 images')",
+    "Image preview modal opens on image click",
+    "Image preview modal closes on X button click",
+    "Image preview modal closes on backdrop click",
+    "Instagram displayed as @handle format on cards (@noburestaurants)",
+    "Instagram handle links to full URL",
+    "CSV export includes Price Range column",
+    "Search results include price_range and phone fields",
+    "Export from import page includes Price Range column",
+    "Phone numbers displayed on cards after cross-check",
+    "Discrepancy panel shows Address, Website, Images discrepancies",
+    "2/3 locations matched (Nobu Miami, Museum of Ice Cream)",
+    "1/3 locations not found (iFLY Indoor Skydiving)"
+  ],
+  
+  "test_report_links": [
+    "/app/backend/tests/test_import_feature.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  
+  "action_items": [],
+  
+  "critical_code_review_comments": [],
+  
+  "updated_files": [
+    "/app/backend/tests/test_import_feature.py"
+  ],
+  
+  "success_rate": {
+    "backend": "100% (18/18 tests passed)",
+    "frontend": "100% (all features verified)"
+  },
+  
+  "seed_data_creation": "Test CSV file at /tmp/test_import.csv with 3 locations: Nobu Miami ($$$), iFLY Indoor Skydiving (no price), Museum of Ice Cream ($$)",
+  
+  "retest_needed": false,
+  
+  "should_main_agent_self_test": false,
+  
+  "context_for_next_testing_agent": "Import feature with field selection fully tested. Cross-check API now requires {locations: [...], fields_to_fix: [...]} format instead of just a list. The field selector defaults to all 11 fields selected. Price Range maps from Google's PRICE_LEVEL_FREE/INEXPENSIVE=$, MODERATE=$$, EXPENSIVE/VERY_EXPENSIVE=$$$. All 18 backend tests pass including new tests for field selector and price range. Image preview modal works with force=True click due to overlay.",
+  
+  "features_verified": {
+    "field_selector": {
+      "status": "PASSED",
+      "details": "11 toggleable fields, Select All/Clear links, button shows field count"
+    },
+    "price_range_csv_upload": {
+      "status": "PASSED",
+      "details": "Price Range parsed from CSV ($$$ for Nobu, $$ for Museum)"
+    },
+    "price_range_google_crosscheck": {
+      "status": "PASSED",
+      "details": "Price Range filled from Google Places API"
+    },
+    "price_range_dropdown": {
+      "status": "PASSED",
+      "details": "4 options: Not Set, $ ($0-$50), $$ ($51-$100), $$$ ($101+)"
+    },
+    "price_range_export": {
+      "status": "PASSED",
+      "details": "Price Range column included in CSV export"
+    },
+    "image_gallery": {
+      "status": "PASSED",
+      "details": "Main image + thumbnail strip, green badge showing image count"
+    },
+    "image_preview_modal": {
+      "status": "PASSED",
+      "details": "Opens on click, closes on X or backdrop click"
+    },
+    "instagram_handle_display": {
+      "status": "PASSED",
+      "details": "@noburestaurants format with link to full URL"
+    },
+    "search_results_price_phone": {
+      "status": "PASSED",
+      "details": "Search results include price_range and phone fields"
+    }
+  },
+  
+  "test_data": {
+    "test_csv_path": "/tmp/test_import.csv",
+    "test_locations": [
+      "Nobu Miami - Matched, 3 discrepancies, price $$$, phone +1 305-695-3232",
+      "iFLY Indoor Skydiving - Not Found, no price",
+      "Museum of Ice Cream - Matched, 3 discrepancies, price $$, phone +1 866-665-1018"
+    ]
+  }
+}

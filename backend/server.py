@@ -91,6 +91,7 @@ class PlaceResult(BaseModel):
     description: Optional[str] = None
     photos: List[Photo] = []
     rating: Optional[float] = None
+    price_range: Optional[str] = None
     category: str = ""
 
 
@@ -194,6 +195,22 @@ class SearchHistoryEntry(BaseModel):
     location_names: List[str]
     results_count: int
     results: List[SearchHistoryResult]
+
+
+# Price level mapping from Google Places API
+PRICE_LEVEL_MAP = {
+    "PRICE_LEVEL_FREE": "$",
+    "PRICE_LEVEL_INEXPENSIVE": "$",
+    "PRICE_LEVEL_MODERATE": "$$",
+    "PRICE_LEVEL_EXPENSIVE": "$$$",
+    "PRICE_LEVEL_VERY_EXPENSIVE": "$$$",
+}
+
+
+def map_price_level(place_data: dict) -> Optional[str]:
+    """Map Google Places priceLevel to $/$$/$$$ format."""
+    level = place_data.get("priceLevel", "")
+    return PRICE_LEVEL_MAP.get(level)
 
 
 # Helper function to extract Instagram from website or editorial summary
@@ -544,7 +561,7 @@ async def search_places(request: SearchRequest):
         
         headers = {
             "X-Goog-Api-Key": GOOGLE_PLACES_API_KEY,
-            "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.location,places.websiteUri,places.internationalPhoneNumber,places.rating,places.photos,places.editorialSummary,places.types"
+            "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.location,places.websiteUri,places.internationalPhoneNumber,places.rating,places.priceLevel,places.photos,places.editorialSummary,places.types"
         }
         
         async with httpx.AsyncClient(timeout=30.0) as http_client:
@@ -620,6 +637,7 @@ async def search_places(request: SearchRequest):
                         description=description,
                         photos=photos,
                         rating=place.get("rating"),
+                        price_range=map_price_level(place),
                         category=request.category
                     )
                     
@@ -698,6 +716,7 @@ async def search_places(request: SearchRequest):
                             description=description,
                             photos=photos,
                             rating=place.get("rating"),
+                            price_range=map_price_level(place),
                             category=request.category
                         )
                         
@@ -808,6 +827,7 @@ async def export_places_to_csv(places: List[PlaceResult]):
         "Instagram",
         "Description",
         "Rating",
+        "Price Range",
         "Image 1",
         "Image 2",
         "Image 3"
@@ -840,6 +860,7 @@ async def export_places_to_csv(places: List[PlaceResult]):
             ig_handle,
             place.description or "",
             place.rating or "",
+            place.price_range or "",
             photos[0].url if len(photos) > 0 else "",
             photos[1].url if len(photos) > 1 else "",
             photos[2].url if len(photos) > 2 else ""
@@ -896,6 +917,7 @@ class ImportedLocation(BaseModel):
     instagram: str = ""
     description: str = ""
     rating: Optional[float] = None
+    price_range: str = ""
     images: List[str] = []
 
 
@@ -961,6 +983,7 @@ def parse_csv_row(row: dict, has_phone: bool) -> ImportedLocation:
         instagram=ig,
         description=(row.get("Description") or "").strip(),
         rating=rating,
+        price_range=(row.get("Price Range") or "").strip(),
         images=images,
     )
 
@@ -1020,7 +1043,7 @@ async def lookup_google_place(http_client: httpx.AsyncClient, name: str, address
 
     headers = {
         "X-Goog-Api-Key": GOOGLE_PLACES_API_KEY,
-        "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.location,places.websiteUri,places.internationalPhoneNumber,places.rating,places.photos,places.editorialSummary"
+        "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.location,places.websiteUri,places.internationalPhoneNumber,places.rating,places.priceLevel,places.photos,places.editorialSummary"
     }
     payload = {"textQuery": query, "maxResultCount": 1}
 
@@ -1068,11 +1091,12 @@ def google_place_to_imported(place: dict) -> ImportedLocation:
         instagram=ig,
         description=description,
         rating=place.get("rating"),
+        price_range=PRICE_LEVEL_MAP.get(place.get("priceLevel", ""), ""),
         images=images,
     )
 
 
-def find_discrepancies(original: ImportedLocation, google: ImportedLocation) -> dict:
+def find_discrepancies(original: ImportedLocation, google: ImportedLocation, fields_to_fix: Optional[List[str]] = None) -> dict:
     """Compare original and Google data, return dict of field discrepancies."""
     discrepancies = {}
     fields_to_check = [
@@ -1081,8 +1105,12 @@ def find_discrepancies(original: ImportedLocation, google: ImportedLocation) -> 
         ("phone", "Phone"),
         ("description", "Description"),
         ("rating", "Rating"),
+        ("price_range", "Price Range"),
     ]
     for field, label in fields_to_check:
+        # Skip fields not in the fix list
+        if fields_to_fix and field not in fields_to_fix:
+            continue
         orig_val = getattr(original, field)
         goog_val = getattr(google, field)
         # Normalize for comparison
@@ -1096,23 +1124,31 @@ def find_discrepancies(original: ImportedLocation, google: ImportedLocation) -> 
                 "label": label
             }
 
-    # Check images - only if Google has images and original doesn't (or has fewer)
-    if len(google.images) > len(original.images) and len(original.images) == 0:
-        discrepancies["images"] = {
-            "original": f"{len(original.images)} images",
-            "google": f"{len(google.images)} images",
-            "label": "Images"
-        }
+    # Check images - only if selected and Google has images and original doesn't
+    if (not fields_to_fix or "images" in fields_to_fix):
+        if len(google.images) > len(original.images) and len(original.images) == 0:
+            discrepancies["images"] = {
+                "original": f"{len(original.images)} images",
+                "google": f"{len(google.images)} images",
+                "label": "Images"
+            }
 
     return discrepancies
 
 
+class CrossCheckRequest(BaseModel):
+    locations: List[ImportedLocation]
+    fields_to_fix: List[str] = []  # Empty = fix all fields
+
+
 @api_router.post("/import/cross-check")
-async def cross_check_locations(locations: List[ImportedLocation]):
+async def cross_check_locations(request: CrossCheckRequest):
     """Cross-check imported locations against Google Places API."""
     if not GOOGLE_PLACES_API_KEY:
         raise HTTPException(status_code=500, detail="Google Places API key not configured")
 
+    locations = request.locations
+    fields_to_fix = request.fields_to_fix if request.fields_to_fix else None  # None = all fields
     results = []
 
     async with httpx.AsyncClient(timeout=30.0) as http_client:
@@ -1134,27 +1170,29 @@ async def cross_check_locations(locations: List[ImportedLocation]):
                     continue
 
                 google_loc = google_place_to_imported(gresult)
-                discreps = find_discrepancies(loc, google_loc)
+                discreps = find_discrepancies(loc, google_loc, fields_to_fix)
 
-                # Auto-fill missing fields from Google (no discrepancy, just blank originals)
+                # Auto-fill missing fields from Google (only selected fields)
                 filled = loc.model_copy()
-                if not filled.address and google_loc.address:
+                if (not fields_to_fix or "address" in fields_to_fix) and not filled.address and google_loc.address:
                     filled.address = google_loc.address
-                if not filled.website and google_loc.website:
+                if (not fields_to_fix or "website" in fields_to_fix) and not filled.website and google_loc.website:
                     filled.website = google_loc.website
-                if not filled.phone and google_loc.phone:
+                if (not fields_to_fix or "phone" in fields_to_fix) and not filled.phone and google_loc.phone:
                     filled.phone = google_loc.phone
-                if not filled.description and google_loc.description:
+                if (not fields_to_fix or "description" in fields_to_fix) and not filled.description and google_loc.description:
                     filled.description = google_loc.description
-                if filled.rating is None and google_loc.rating is not None:
+                if (not fields_to_fix or "rating" in fields_to_fix) and filled.rating is None and google_loc.rating is not None:
                     filled.rating = google_loc.rating
-                if not filled.images and google_loc.images:
+                if (not fields_to_fix or "price_range" in fields_to_fix) and not filled.price_range and google_loc.price_range:
+                    filled.price_range = google_loc.price_range
+                if (not fields_to_fix or "images" in fields_to_fix) and not filled.images and google_loc.images:
                     filled.images = google_loc.images
-                if filled.latitude == 0 and google_loc.latitude != 0:
+                if (not fields_to_fix or "latitude" in fields_to_fix) and filled.latitude == 0 and google_loc.latitude != 0:
                     filled.latitude = google_loc.latitude
-                if filled.longitude == 0 and google_loc.longitude != 0:
+                if (not fields_to_fix or "longitude" in fields_to_fix) and filled.longitude == 0 and google_loc.longitude != 0:
                     filled.longitude = google_loc.longitude
-                if not filled.instagram and google_loc.instagram:
+                if (not fields_to_fix or "instagram" in fields_to_fix) and not filled.instagram and google_loc.instagram:
                     filled.instagram = google_loc.instagram
 
                 results.append(CrossCheckResult(
@@ -1165,19 +1203,20 @@ async def cross_check_locations(locations: List[ImportedLocation]):
                     matched=True
                 ))
 
-        # Enrich with Instagram from websites
-        filled_locs = [r.original for r in results if r.matched and not r.original.instagram and r.original.website]
-        if filled_locs:
-            async with httpx.AsyncClient(timeout=10.0) as ig_client:
-                ig_tasks = [scrape_instagram_from_website(ig_client, loc.website) for loc in filled_locs]
-                ig_results = await asyncio.gather(*ig_tasks, return_exceptions=True)
-                ig_idx = 0
-                for r in results:
-                    if r.matched and not r.original.instagram and r.original.website:
-                        handle = ig_results[ig_idx] if ig_idx < len(ig_results) else None
-                        if isinstance(handle, str) and handle:
-                            r.original.instagram = f"https://instagram.com/{handle}"
-                        ig_idx += 1
+        # Enrich with Instagram from websites (only if instagram is in fields_to_fix)
+        if not fields_to_fix or "instagram" in fields_to_fix:
+            filled_locs = [r.original for r in results if r.matched and not r.original.instagram and r.original.website]
+            if filled_locs:
+                async with httpx.AsyncClient(timeout=10.0) as ig_client:
+                    ig_tasks = [scrape_instagram_from_website(ig_client, loc.website) for loc in filled_locs]
+                    ig_results = await asyncio.gather(*ig_tasks, return_exceptions=True)
+                    ig_idx = 0
+                    for r in results:
+                        if r.matched and not r.original.instagram and r.original.website:
+                            handle = ig_results[ig_idx] if ig_idx < len(ig_results) else None
+                            if isinstance(handle, str) and handle:
+                                r.original.instagram = f"https://instagram.com/{handle}"
+                            ig_idx += 1
 
     return {"success": True, "results": [r.model_dump() for r in results]}
 
@@ -1234,7 +1273,7 @@ async def export_import_csv(locations: List[ImportedLocation]):
     writer.writerow([
         "Experience Type", "Name", "Address", "Latitude", "Longitude",
         "Website", "Phone", "Instagram", "Description", "Rating",
-        "Image 1", "Image 2", "Image 3"
+        "Price Range", "Image 1", "Image 2", "Image 3"
     ])
 
     for loc in locations:
@@ -1259,6 +1298,7 @@ async def export_import_csv(locations: List[ImportedLocation]):
             ig_handle,
             loc.description or "",
             loc.rating or "",
+            loc.price_range or "",
             loc.images[0] if len(loc.images) > 0 else "",
             loc.images[1] if len(loc.images) > 1 else "",
             loc.images[2] if len(loc.images) > 2 else "",

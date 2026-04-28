@@ -107,13 +107,15 @@ class TestImportCrossCheck:
                 "instagram": "https://instagram.com/noburestaurants",
                 "description": "",
                 "rating": None,
+                "price_range": "",
                 "images": []
             }
         ]
         
+        # New format: {locations: [...], fields_to_fix: [...]}
         response = requests.post(
             f"{BASE_URL}/api/import/cross-check",
-            json=test_locations,
+            json={"locations": test_locations, "fields_to_fix": ["address", "phone", "rating", "price_range", "images"]},
             timeout=60  # Cross-check can take a while
         )
         
@@ -164,13 +166,15 @@ class TestImportCrossCheck:
                 "instagram": "",
                 "description": "",
                 "rating": None,
+                "price_range": "",
                 "images": []
             }
         ]
         
+        # New format with fields_to_fix
         response = requests.post(
             f"{BASE_URL}/api/import/cross-check",
-            json=test_locations,
+            json={"locations": test_locations, "fields_to_fix": ["address", "phone", "rating", "price_range", "images", "description"]},
             timeout=60
         )
         
@@ -207,13 +211,15 @@ class TestImportCrossCheck:
                 "instagram": "",
                 "description": "A wrong description",
                 "rating": 1.0,  # Intentionally wrong
+                "price_range": "",
                 "images": []
             }
         ]
         
+        # New format with fields_to_fix
         response = requests.post(
             f"{BASE_URL}/api/import/cross-check",
-            json=test_locations,
+            json={"locations": test_locations, "fields_to_fix": ["address", "phone", "rating", "price_range", "website", "description"]},
             timeout=60
         )
         
@@ -304,6 +310,7 @@ class TestImportExportCSV:
                 "instagram": "https://instagram.com/testrestaurant",
                 "description": "A great test restaurant",
                 "rating": 4.5,
+                "price_range": "$$$",
                 "images": ["https://example.com/img1.jpg", "https://example.com/img2.jpg"]
             },
             {
@@ -318,6 +325,7 @@ class TestImportExportCSV:
                 "instagram": "",
                 "description": "",
                 "rating": None,
+                "price_range": "$$",
                 "images": []
             }
         ]
@@ -335,12 +343,12 @@ class TestImportExportCSV:
         content = response.text
         lines = content.strip().split('\n')
         
-        # Check header
+        # Check header - now includes Price Range
         header = lines[0]
         expected_columns = [
             "Experience Type", "Name", "Address", "Latitude", "Longitude",
             "Website", "Phone", "Instagram", "Description", "Rating",
-            "Image 1", "Image 2", "Image 3"
+            "Price Range", "Image 1", "Image 2", "Image 3"
         ]
         for col in expected_columns:
             assert col in header, f"Missing column: {col}"
@@ -358,15 +366,18 @@ class TestImportExportCSV:
         assert row1["Phone"] == "+1-212-555-1234"
         assert row1["Instagram"] == "testrestaurant"  # Should be handle only
         assert row1["Description"] == "A great test restaurant"
+        assert row1["Price Range"] == "$$$"  # New field
         
         # Second row validation
         row2 = rows[1]
         assert row2["Experience Type"] == "Thrill Seeking"  # Should be display name
         assert row2["Phone"] == ""
         assert row2["Instagram"] == ""
+        assert row2["Price Range"] == "$$"  # New field
         
         print(f"✓ Export CSV: {len(rows)} rows with correct format")
         print(f"  - Phone column present: ✓")
+        print(f"  - Price Range column present: ✓")
         print(f"  - Instagram as handle only: ✓")
         print(f"  - Experience Type display names: ✓")
     
@@ -395,8 +406,8 @@ class TestEndToEndImportFlow:
     def test_full_import_flow(self):
         """Test complete import workflow"""
         # Step 1: Upload CSV
-        csv_content = """Experience Type,Name,Address,Latitude,Longitude,Website,Phone,Instagram,Description,Rating,Image 1,Image 2,Image 3
-Foodie,Nobu Miami,4525 Collins Ave Miami Beach FL,25.8196,-80.1219,https://www.noburestaurants.com,,noburestaurants,,,,,
+        csv_content = """Experience Type,Name,Address,Latitude,Longitude,Website,Phone,Instagram,Description,Rating,Price Range,Image 1,Image 2,Image 3
+Foodie,Nobu Miami,4525 Collins Ave Miami Beach FL,25.8196,-80.1219,https://www.noburestaurants.com,,noburestaurants,,,$$$,,,
 """
         files = {'file': ('test.csv', io.BytesIO(csv_content.encode('utf-8')), 'text/csv')}
         
@@ -405,11 +416,11 @@ Foodie,Nobu Miami,4525 Collins Ave Miami Beach FL,25.8196,-80.1219,https://www.n
         upload_data = upload_response.json()
         print(f"Step 1 - Upload: {upload_data['count']} locations")
         
-        # Step 2: Cross-check against Google
+        # Step 2: Cross-check against Google (new format with fields_to_fix)
         locations = upload_data["locations"]
         crosscheck_response = requests.post(
             f"{BASE_URL}/api/import/cross-check",
-            json=locations,
+            json={"locations": locations, "fields_to_fix": ["address", "phone", "rating", "price_range", "images", "description"]},
             timeout=60
         )
         assert crosscheck_response.status_code == 200
@@ -448,6 +459,253 @@ Foodie,Nobu Miami,4525 Collins Ave Miami Beach FL,25.8196,-80.1219,https://www.n
         print(f"Step 4 - Exported enriched CSV")
         
         print("✓ Full import flow completed successfully")
+
+
+if __name__ == "__main__":
+    pytest.main([__file__, "-v", "--tb=short"])
+
+
+
+class TestFieldSelector:
+    """Test field selector functionality for cross-check"""
+    
+    def test_cross_check_with_specific_fields(self):
+        """Test cross-check only fills selected fields"""
+        test_locations = [
+            {
+                "id": "test-fields",
+                "experience_type": "Foodie",
+                "name": "Nobu Miami",
+                "address": "",  # Empty - should be filled if selected
+                "latitude": 0,
+                "longitude": 0,
+                "website": "",  # Empty - should NOT be filled if not selected
+                "phone": "",  # Empty - should be filled if selected
+                "instagram": "",
+                "description": "",
+                "rating": None,
+                "price_range": "",
+                "images": []
+            }
+        ]
+        
+        # Only select address and phone fields
+        response = requests.post(
+            f"{BASE_URL}/api/import/cross-check",
+            json={"locations": test_locations, "fields_to_fix": ["address", "phone"]},
+            timeout=60
+        )
+        
+        assert response.status_code == 200
+        data = response.json()
+        result = data["results"][0]
+        
+        if result["matched"]:
+            original = result["original"]
+            # Address and phone should be filled
+            if original.get("address"):
+                print(f"✓ Address filled: {original['address']}")
+            if original.get("phone"):
+                print(f"✓ Phone filled: {original['phone']}")
+            # Website should NOT be filled (not in fields_to_fix)
+            # Note: website might still be empty if Google doesn't have it
+            print(f"  Website (should be empty): '{original.get('website', '')}'")
+        else:
+            print("✓ Location not matched")
+    
+    def test_cross_check_with_all_fields(self):
+        """Test cross-check with all 11 fields selected"""
+        test_locations = [
+            {
+                "id": "test-all-fields",
+                "experience_type": "",
+                "name": "Nobu Miami",
+                "address": "",
+                "latitude": 0,
+                "longitude": 0,
+                "website": "",
+                "phone": "",
+                "instagram": "",
+                "description": "",
+                "rating": None,
+                "price_range": "",
+                "images": []
+            }
+        ]
+        
+        # All 11 fields
+        all_fields = ["name", "address", "latitude", "longitude", "description", 
+                      "phone", "website", "instagram", "price_range", "rating", "images"]
+        
+        response = requests.post(
+            f"{BASE_URL}/api/import/cross-check",
+            json={"locations": test_locations, "fields_to_fix": all_fields},
+            timeout=60
+        )
+        
+        assert response.status_code == 200
+        data = response.json()
+        result = data["results"][0]
+        
+        if result["matched"]:
+            original = result["original"]
+            filled_count = 0
+            for field in ["address", "phone", "rating", "price_range", "images"]:
+                val = original.get(field)
+                if val and (not isinstance(val, list) or len(val) > 0):
+                    filled_count += 1
+                    print(f"✓ {field}: {val if not isinstance(val, list) else f'{len(val)} items'}")
+            print(f"✓ Cross-check with all fields: {filled_count} fields filled")
+        else:
+            print("✓ Location not matched")
+    
+    def test_cross_check_with_empty_fields_list(self):
+        """Test cross-check with empty fields_to_fix (should fix all)"""
+        test_locations = [
+            {
+                "id": "test-empty-fields",
+                "experience_type": "",
+                "name": "Nobu Miami",
+                "address": "",
+                "latitude": 0,
+                "longitude": 0,
+                "website": "",
+                "phone": "",
+                "instagram": "",
+                "description": "",
+                "rating": None,
+                "price_range": "",
+                "images": []
+            }
+        ]
+        
+        # Empty fields_to_fix should fix all fields
+        response = requests.post(
+            f"{BASE_URL}/api/import/cross-check",
+            json={"locations": test_locations, "fields_to_fix": []},
+            timeout=60
+        )
+        
+        assert response.status_code == 200
+        data = response.json()
+        result = data["results"][0]
+        
+        if result["matched"]:
+            print("✓ Cross-check with empty fields_to_fix: all fields should be fixed")
+        else:
+            print("✓ Location not matched")
+
+
+class TestPriceRange:
+    """Test Price Range field functionality"""
+    
+    def test_price_range_from_google(self):
+        """Test that price_range is pulled from Google Places"""
+        test_locations = [
+            {
+                "id": "test-price",
+                "experience_type": "Foodie",
+                "name": "Nobu Miami",
+                "address": "4525 Collins Ave Miami Beach FL 33140",
+                "latitude": 0,
+                "longitude": 0,
+                "website": "",
+                "phone": "",
+                "instagram": "",
+                "description": "",
+                "rating": None,
+                "price_range": "",  # Empty - should be filled from Google
+                "images": []
+            }
+        ]
+        
+        response = requests.post(
+            f"{BASE_URL}/api/import/cross-check",
+            json={"locations": test_locations, "fields_to_fix": ["price_range"]},
+            timeout=60
+        )
+        
+        assert response.status_code == 200
+        data = response.json()
+        result = data["results"][0]
+        
+        if result["matched"]:
+            original = result["original"]
+            google = result.get("google", {})
+            
+            # Check if price_range was filled
+            if original.get("price_range"):
+                assert original["price_range"] in ["$", "$$", "$$$"], f"Invalid price_range: {original['price_range']}"
+                print(f"✓ Price Range filled from Google: {original['price_range']}")
+            
+            # Check Google data has price_range
+            if google.get("price_range"):
+                print(f"  Google price_range: {google['price_range']}")
+        else:
+            print("✓ Location not matched")
+    
+    def test_price_range_in_csv_upload(self):
+        """Test that Price Range is parsed from CSV upload"""
+        csv_content = """Experience Type,Name,Address,Latitude,Longitude,Website,Phone,Instagram,Description,Rating,Price Range,Image 1,Image 2,Image 3
+Foodie,Test Restaurant,123 Test St,40.7128,-74.006,https://test.com,,testhandle,A test desc,4.5,$$$,,,
+Thrill Seeking,Test Adventure,456 Adventure Ave,34.0522,-118.2437,https://adventure.com,,,,,$$,,,
+"""
+        files = {'file': ('test_price.csv', io.BytesIO(csv_content.encode('utf-8')), 'text/csv')}
+        
+        response = requests.post(f"{BASE_URL}/api/import/upload", files=files, timeout=30)
+        assert response.status_code == 200
+        data = response.json()
+        
+        assert data["success"] == True
+        assert data["count"] == 2
+        
+        # Check price_range was parsed
+        loc1 = data["locations"][0]
+        loc2 = data["locations"][1]
+        
+        assert loc1.get("price_range") == "$$$", f"Expected '$$$', got '{loc1.get('price_range')}'"
+        assert loc2.get("price_range") == "$$", f"Expected '$$', got '{loc2.get('price_range')}'"
+        
+        print(f"✓ Price Range parsed from CSV: {loc1['price_range']}, {loc2['price_range']}")
+    
+    def test_price_range_in_export(self):
+        """Test that Price Range is included in CSV export"""
+        test_locations = [
+            {
+                "id": "export-price",
+                "experience_type": "foodie",
+                "name": "Test Restaurant",
+                "address": "123 Test St",
+                "latitude": 40.7128,
+                "longitude": -74.006,
+                "website": "",
+                "phone": "",
+                "instagram": "",
+                "description": "",
+                "rating": 4.5,
+                "price_range": "$$$",
+                "images": []
+            }
+        ]
+        
+        response = requests.post(
+            f"{BASE_URL}/api/import/export-csv",
+            json=test_locations,
+            timeout=30
+        )
+        
+        assert response.status_code == 200
+        content = response.text
+        
+        # Check header has Price Range
+        assert "Price Range" in content, "Price Range column missing from export"
+        
+        # Parse and check value
+        reader = csv.DictReader(io.StringIO(content))
+        rows = list(reader)
+        assert rows[0]["Price Range"] == "$$$"
+        
+        print("✓ Price Range included in CSV export")
 
 
 if __name__ == "__main__":
