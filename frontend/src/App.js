@@ -46,7 +46,8 @@ import {
   Clock,
   Settings,
   Info,
-  Upload
+  Upload,
+  Phone
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import HistoryPage from "@/pages/HistoryPage";
@@ -336,6 +337,12 @@ function LocationCard({ place, index, isSelected, onSelect, isNew, onRemove, onI
               Website
               <ExternalLink className="w-3 h-3" />
             </a>
+          )}
+          {place.phone && (
+            <span className="inline-flex items-center gap-1 text-sm text-muted-foreground" data-testid={`phone-${index}`}>
+              <Phone className="w-3 h-3" />
+              {place.phone}
+            </span>
           )}
           {place.instagram && (
             <a
