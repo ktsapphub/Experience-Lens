@@ -1,7 +1,7 @@
 # MapData Collector - Product Requirements Document
 
 ## Original Problem Statement
-Build a Google Maps information scraper that pulls location data (Name, Address, Lat/Lng, Website, Phone, Instagram, Description, Images, Rating) with category-based and specific location searches. Includes an Import page for cross-checking and enriching existing location data from CSV/Excel files.
+Build a Google Maps information scraper that pulls location data with category-based and specific location searches. Includes an Import page for cross-checking and enriching existing location data from CSV/Excel files.
 
 ## Tech Stack
 - Frontend: React + Tailwind CSS + shadcn/ui + react-router-dom
@@ -11,35 +11,33 @@ Build a Google Maps information scraper that pulls location data (Name, Address,
 
 ## Pages
 1. **Search** — Category/location-based search with results grid, pagination, export
-2. **Import** — CSV/Excel upload, gallery-style cards, experience type assignment, cross-check vs Google, discrepancy resolution, AI description generation, export
+2. **Import** — CSV/Excel upload, field selection checklist, cross-check vs Google, discrepancy resolution, AI descriptions, image preview, export
 3. **History** — Past search records with expandable results
 4. **Config** — System info and experience type keyword management
 
-## What's Been Implemented
-
-### Import Page Features
-- CSV/Excel upload with drag-and-drop
-- Gallery-style cards matching search results (main image + thumbnail strip)
-- Image count badge, "No images" placeholder when empty
-- Experience Type column: reads from import, editable dropdown per card, carries to export
-- Cross-check against Google Places (auto-fills missing data, never overwrites valid data)
-- Discrepancy resolution (side-by-side original vs Google, including images)
-- AI description generation (Gemini, max 500 chars)
-- All fields visible: images, name, type, address, description, coordinates, website, phone, Instagram, rating
-- Export All / Export Selected with consistent CSV format
+## Data Fields
+Name, Address, Latitude, Longitude, Description, Category (5 types), Price Range ($/$$/$$), Phone, Website, Instagram (handle + URL), Rating, Images (up to 3)
 
 ## Completed Features (All Tested)
 - [x] Google Places API integration & search
 - [x] Instagram scraping from business websites
 - [x] Yellow border for missing descriptions
 - [x] Broken image handling
-- [x] Search progress indicator
+- [x] Search progress indicator (3 phases)
 - [x] Specific Places search without category
 - [x] Phone number in results and exports
-- [x] Import page with gallery-style cards matching search results
-- [x] Cross-check fills gaps without overwriting valid info
-- [x] Experience Type field (editable dropdown, carries to export)
-- [x] Navigation across all pages (Search, Import, History, Config)
+- [x] Price Range ($/$$/$$$ from Google priceLevel)
+- [x] Import page with full feature set:
+  - [x] CSV/Excel upload
+  - [x] "What do you want to fix?" field selection checklist (11 fields)
+  - [x] Cross-check only selected fields against Google
+  - [x] Price Range dropdown on cards
+  - [x] Image gallery with green badge + preview modal
+  - [x] Instagram @handle display with full URL link
+  - [x] Experience Type editable dropdown
+  - [x] Discrepancy resolution (side-by-side picker)
+  - [x] AI description generation (Gemini, max 500 chars)
+  - [x] Export All / Export Selected with all fields
 
 ## Prioritized Backlog
 ### P1 (High Priority)
