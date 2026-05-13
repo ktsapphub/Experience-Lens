@@ -46,13 +46,11 @@ import {
   Clock,
   Settings,
   Info,
-  Upload,
   Phone
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import HistoryPage from "@/pages/HistoryPage";
 import ConfigPage from "@/pages/ConfigPage";
-import ImportPage from "@/pages/ImportPage";
 
 // Helper to get seen locations from localStorage
 const getSeenLocations = () => {
@@ -809,12 +807,6 @@ function SearchPage() {
                     Search
                   </Button>
                 </Link>
-                <Link to="/import">
-                  <Button variant="ghost" size="sm" className="text-sm">
-                    <Upload className="w-4 h-4 mr-1" />
-                    Import
-                  </Button>
-                </Link>
                 <Link to="/history">
                   <Button variant="ghost" size="sm" className="text-sm">
                     <Clock className="w-4 h-4 mr-1" />
@@ -1242,7 +1234,6 @@ function App() {
       <Toaster position="top-right" richColors />
       <Routes>
         <Route path="/" element={<SearchPage />} />
-        <Route path="/import" element={<ImportPage />} />
         <Route path="/history" element={<HistoryPage />} />
         <Route path="/config" element={<ConfigPage />} />
       </Routes>
