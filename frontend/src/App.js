@@ -82,8 +82,9 @@ const CATEGORIES = [
     name: "Thrill Seeking", 
     description: "High-energy, adrenaline, competitive experiences",
     icon: Mountain,
-    color: "bg-orange-500",
-    lightColor: "bg-orange-100 text-orange-800 border-orange-200",
+    color: "bg-[#E63946]",
+    hex: "#E63946",
+    lightColor: "bg-red-50 text-[#E63946] border-[#E63946]/30",
     tooltip: {
       title: "Thrill Seeking Experiences",
       description: "High-energy, adrenaline-driven, competitive, or challenge-based activities that feel like an event.",
@@ -95,8 +96,9 @@ const CATEGORIES = [
     name: "Super Chill", 
     description: "Wellness, scenery, casual exploration",
     icon: Sparkles,
-    color: "bg-emerald-500",
-    lightColor: "bg-green-100 text-green-800 border-green-200",
+    color: "bg-[#84A98C]",
+    hex: "#84A98C",
+    lightColor: "bg-green-50 text-[#84A98C] border-[#84A98C]/30",
     tooltip: {
       title: "Super Chill Experiences",
       description: "Low-pressure, relaxed-pace activities focused on wellness, scenery, casual play, or easy exploration.",
@@ -108,8 +110,9 @@ const CATEGORIES = [
     name: "Creative", 
     description: "Hands-on making, artistic expression",
     icon: Palette,
-    color: "bg-violet-500",
-    lightColor: "bg-purple-100 text-purple-800 border-purple-200",
+    color: "bg-[#0F8FA8]",
+    hex: "#0F8FA8",
+    lightColor: "bg-cyan-50 text-[#0F8FA8] border-[#0F8FA8]/30",
     tooltip: {
       title: "Creative Experiences",
       description: "Hands-on making, artistic expression, interactive exhibits, or photo-forward experiences.",
@@ -121,8 +124,9 @@ const CATEGORIES = [
     name: "Pure Entertainment", 
     description: "Shows, performances, spectacles",
     icon: Music,
-    color: "bg-pink-500",
-    lightColor: "bg-pink-100 text-pink-800 border-pink-200",
+    color: "bg-[#9B5DE5]",
+    hex: "#9B5DE5",
+    lightColor: "bg-purple-50 text-[#9B5DE5] border-[#9B5DE5]/30",
     tooltip: {
       title: "Pure Entertainment Experiences",
       description: "Sit-back-and-enjoy experiences such as shows, games, spectacles, or ticketed venues.",
@@ -134,8 +138,9 @@ const CATEGORIES = [
     name: "Foodie", 
     description: "Tastings, dining, culinary experiences",
     icon: UtensilsCrossed,
-    color: "bg-amber-500",
-    lightColor: "bg-amber-100 text-amber-800 border-amber-200",
+    color: "bg-[#F4A261]",
+    hex: "#F4A261",
+    lightColor: "bg-orange-50 text-[#F4A261] border-[#F4A261]/30",
     tooltip: {
       title: "Foodie Experiences",
       description: "Food and drink as the main event, including tastings, pairings, ambiance dining, or curated culinary experiences.",
@@ -178,15 +183,16 @@ const CATEGORY_IMAGES = {
 };
 
 // Location Card Component
-function LocationCard({ place, index, isSelected, onSelect, isNew, onRemove, onImageError, shortLinkStatus }) {
+function LocationCard({ place, index, isSelected, onSelect, isNew, onRemove, onImageError, shortLinkStatus, generatedDesc, onGenerateDesc, isGenerating }) {
   const [imageError, setImageError] = useState({});
   const category = CATEGORIES.find(c => c.id === place.category);
   const CategoryIcon = category?.icon || MapPin;
   
   const mainImage = place.photos?.[0]?.url || CATEGORY_IMAGES[place.category];
   
-  // Check if description is missing
-  const isMissingDescription = !place.description || place.description.trim() === "";
+  // Use generated description if available
+  const description = generatedDesc || place.description;
+  const isMissingDescription = !description || description.trim() === "";
   
   // Short link info
   const sl = shortLinkStatus || {};
@@ -317,10 +323,14 @@ function LocationCard({ place, index, isSelected, onSelect, isNew, onRemove, onI
             {place.name}
           </h3>
           {(category?.name || place.category) && (
-            <Badge variant="outline" className={`text-xs ${category?.lightColor || ''}`}>
-              <CategoryIcon className="w-3 h-3 mr-1" />
+            <span
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold text-white shadow-sm"
+              style={{ backgroundColor: category?.hex || '#6b7280' }}
+              data-testid={`category-badge-${index}`}
+            >
+              <CategoryIcon className="w-3 h-3" />
               {category?.name || place.category}
-            </Badge>
+            </span>
           )}
         </div>
 
@@ -329,10 +339,24 @@ function LocationCard({ place, index, isSelected, onSelect, isNew, onRemove, onI
           <span className="line-clamp-2">{place.address}</span>
         </div>
 
-        {place.description && (
-          <p className="text-sm text-muted-foreground line-clamp-2">
-            {place.description}
+        {description ? (
+          <p className={`text-sm text-muted-foreground line-clamp-2 ${generatedDesc ? 'italic' : ''}`}>
+            {generatedDesc && <Sparkles className="w-3 h-3 inline mr-1 text-primary" />}
+            {description}
           </p>
+        ) : (
+          <div className="flex items-center gap-2">
+            <p className="text-sm text-yellow-600 italic">No description</p>
+            <button
+              onClick={() => onGenerateDesc(place.id)}
+              disabled={isGenerating}
+              className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 transition-colors disabled:opacity-50"
+              data-testid={`generate-desc-btn-${index}`}
+            >
+              {isGenerating ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+              Generate
+            </button>
+          </div>
         )}
 
         <div className="text-mono text-xs text-muted-foreground bg-secondary/50 px-2 py-1 rounded">
@@ -567,6 +591,9 @@ function SearchPage() {
   const [shortLinks, setShortLinks] = useState({}); // { placeId: { short_url, status: 'pending'|'success'|'error', error } }
   const [shortenLoading, setShortenLoading] = useState(false);
   const [shortioConnected, setShortioConnected] = useState(null); // null=unchecked, true/false
+  const [generatedDescs, setGeneratedDescs] = useState({}); // { placeId: "description" }
+  const [generatingDescId, setGeneratingDescId] = useState(null); // single card generating
+  const [generatingAllDescs, setGeneratingAllDescs] = useState(false);
   const [pagination, setPagination] = useState({
     page: 1,
     totalPages: 1,
@@ -595,9 +622,11 @@ function SearchPage() {
 
   // Shorten links for selected or all visible locations
   const handleShortenLinks = useCallback(async (type = 'selected') => {
+    // Use all-pages pool when available so cross-page selections work
+    const pool = visibleAllPlaces.length > 0 ? visibleAllPlaces : visiblePlaces;
     const targets = type === 'selected'
-      ? visiblePlaces.filter(p => selectedIds.has(p.id) && p.website)
-      : visiblePlaces.filter(p => p.website);
+      ? pool.filter(p => selectedIds.has(p.id) && p.website)
+      : pool.filter(p => p.website);
     
     if (targets.length === 0) {
       toast.error("No locations with websites to shorten");
@@ -633,7 +662,55 @@ function SearchPage() {
     } finally {
       setShortenLoading(false);
     }
-  }, [visiblePlaces, selectedIds]);
+  }, [visiblePlaces, visibleAllPlaces, selectedIds]);
+
+  // Generate description for a single location
+  const handleGenerateDesc = useCallback(async (placeId) => {
+    const place = visiblePlaces.find(p => p.id === placeId);
+    if (!place) return;
+    setGeneratingDescId(placeId);
+    try {
+      const resp = await axios.post(`${API}/generate-descriptions`, {
+        places: [{ id: place.id, name: place.name, address: place.address, category: place.category }]
+      });
+      if (resp.data.success && resp.data.results[0]?.success) {
+        setGeneratedDescs(prev => ({ ...prev, [placeId]: resp.data.results[0].description }));
+        toast.success("Description generated");
+      } else {
+        toast.error("Failed to generate description");
+      }
+    } catch {
+      toast.error("Failed to generate description");
+    } finally {
+      setGeneratingDescId(null);
+    }
+  }, [visiblePlaces]);
+
+  // Generate descriptions for all missing (across all pages, prioritizing selected)
+  const handleGenerateAllDescs = useCallback(async () => {
+    const pool = visibleAllPlaces.length > 0 ? visibleAllPlaces : visiblePlaces;
+    const hasSelection = selectedIds.size > 0;
+    const scope = hasSelection ? pool.filter(p => selectedIds.has(p.id)) : pool;
+    const missing = scope.filter(p => !p.description && !generatedDescs[p.id]);
+    if (missing.length === 0) { toast.info("All locations have descriptions"); return; }
+    setGeneratingAllDescs(true);
+    try {
+      const resp = await axios.post(`${API}/generate-descriptions`, {
+        places: missing.map(p => ({ id: p.id, name: p.name, address: p.address, category: p.category }))
+      });
+      if (resp.data.success) {
+        const newDescs = {};
+        resp.data.results.forEach(r => { if (r.success) newDescs[r.id] = r.description; });
+        setGeneratedDescs(prev => ({ ...prev, ...newDescs }));
+        toast.success(`Generated ${resp.data.generated}/${resp.data.total} descriptions`);
+      }
+    } catch {
+      toast.error("Failed to generate descriptions");
+    } finally {
+      setGeneratingAllDescs(false);
+    }
+  }, [visiblePlaces, visibleAllPlaces, selectedIds, generatedDescs]);
+
 
   // Remove a location from results
   const removeLocation = (placeId) => {
@@ -666,10 +743,13 @@ function SearchPage() {
     });
   };
 
-  // Select all visible places
+  // Select all visible places on current page (additive across pages)
   const selectAllVisible = () => {
-    const allIds = new Set(visiblePlaces.map(p => p.id));
-    setSelectedIds(allIds);
+    setSelectedIds(prev => {
+      const newSet = new Set(prev);
+      visiblePlaces.forEach(p => newSet.add(p.id));
+      return newSet;
+    });
   };
 
   // Deselect all
@@ -747,7 +827,7 @@ function SearchPage() {
         region: searchTab === "region" ? region : "",
         location_names: filteredLocationNames,
         page,
-        per_page: 20
+        per_page: 25
       });
 
       if (response.data.success) {
@@ -792,7 +872,7 @@ function SearchPage() {
           region: searchTab === "region" ? region : "",
           location_names: filteredLocationNames,
           page: p,
-          per_page: 20
+          per_page: 25
         });
         if (response.data.success) {
           allResults.push(...response.data.places);
@@ -829,7 +909,7 @@ function SearchPage() {
       }
     }
 
-    // Filter out failed/broken images and swap in short URLs for export
+    // Filter out failed/broken images and swap in short URLs + generated descriptions for export
     const cleanedData = dataToExport.map(place => {
       const placeFailures = failedImages[place.id];
       const validPhotos = (place.photos || []).filter(photo => {
@@ -840,10 +920,13 @@ function SearchPage() {
       // Use short URL if successfully shortened
       const sl = shortLinks[place.id];
       const website = (sl && sl.status === 'success' && sl.short_url) ? sl.short_url : place.website;
+      // Use generated description if original is missing
+      const description = place.description || generatedDescs[place.id] || "";
       return {
         ...place,
         photos: validPhotos,
         website,
+        description,
       };
     });
 
@@ -865,7 +948,7 @@ function SearchPage() {
       console.error("Export error:", error);
       toast.error("Failed to export CSV");
     }
-  }, [visiblePlaces, visibleAllPlaces, categories, location, region, selectedIds, failedImages, shortLinks]);
+  }, [visiblePlaces, visibleAllPlaces, categories, location, region, selectedIds, failedImages, shortLinks, generatedDescs]);
 
   const handleKeyPress = (e) => {
     if (e.key === 'Enter') {
@@ -1302,6 +1385,29 @@ function SearchPage() {
                     </Button>
                   )}
                 </div>
+
+                {/* Generate Descriptions */}
+                {(() => {
+                  const pool = visibleAllPlaces.length > 0 ? visibleAllPlaces : visiblePlaces;
+                  const hasSelection = selectedIds.size > 0;
+                  const scope = hasSelection ? pool.filter(p => selectedIds.has(p.id)) : pool;
+                  const missingCount = scope.filter(p => !p.description && !generatedDescs[p.id]).length;
+                  return missingCount > 0 ? (
+                    <div className="flex items-center gap-2 border-r border-border pr-4">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleGenerateAllDescs}
+                        disabled={generatingAllDescs}
+                        className="text-xs h-8"
+                        data-testid="generate-all-desc-btn"
+                      >
+                        {generatingAllDescs ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Sparkles className="w-3 h-3 mr-1" />}
+                        Generate {missingCount} {hasSelection ? 'Selected ' : ''}Descriptions
+                      </Button>
+                    </div>
+                  ) : null;
+                })()}
                 
                 <span className="text-sm text-muted-foreground">
                   Page {pagination.page} of {pagination.totalPages}
@@ -1328,6 +1434,9 @@ function SearchPage() {
                     onRemove={removeLocation}
                     onImageError={handleImageError}
                     shortLinkStatus={shortLinks[place.id]}
+                    generatedDesc={generatedDescs[place.id]}
+                    onGenerateDesc={handleGenerateDesc}
+                    isGenerating={generatingDescId === place.id || generatingAllDescs}
                   />
                 ))}
               </div>

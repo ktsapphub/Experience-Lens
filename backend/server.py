@@ -825,10 +825,25 @@ async def export_places_to_csv(places: List[PlaceResult]):
         "foodie": "Foodie"
     }
     
+    # Category hex color mapping
+    CATEGORY_COLORS = {
+        "thrill_seeking": "#E63946",
+        "super_chill": "#84A98C",
+        "creative": "#0F8FA8",
+        "pure_entertainment": "#9B5DE5",
+        "foodie": "#F4A261",
+        # Also map display names for backwards compatibility
+        "Thrill Seeking": "#E63946",
+        "Super Chill": "#84A98C",
+        "Creative": "#0F8FA8",
+        "Pure Entertainment": "#9B5DE5",
+        "Foodie": "#F4A261",
+    }
+    
     output = io.StringIO()
     writer = csv.writer(output)
     
-    # Write header with Experience Type as first column
+    # Write header
     writer.writerow([
         "Experience Type",
         "Name",
@@ -839,6 +854,7 @@ async def export_places_to_csv(places: List[PlaceResult]):
         "Phone",
         "Instagram",
         "Description",
+        "Color",
         "Rating",
         "Price Range",
         "Image 1",
@@ -862,6 +878,8 @@ async def export_places_to_csv(places: List[PlaceResult]):
             else:
                 # If it's already just a handle
                 ig_handle = place.instagram.lstrip('@')
+        # Get hex color for the category
+        category_color = CATEGORY_COLORS.get(place.category, CATEGORY_COLORS.get(experience_type, ""))
         writer.writerow([
             experience_type,
             place.name,
@@ -872,6 +890,7 @@ async def export_places_to_csv(places: List[PlaceResult]):
             place.phone or "",
             ig_handle,
             place.description or "",
+            category_color,
             place.rating or "",
             place.price_range or "",
             photos[0].url if len(photos) > 0 else "",
@@ -897,6 +916,56 @@ async def get_search_history(limit: int = Query(default=10, le=100)):
     ).sort("timestamp", -1).limit(limit).to_list(length=limit)
     return {"history": history}
 
+
+
+
+# ======== AI DESCRIPTION GENERATION ========
+
+EMERGENT_LLM_KEY = os.environ.get('EMERGENT_LLM_KEY', '')
+
+
+class GenerateDescRequest(BaseModel):
+    places: List[dict]  # [{"id": "place_id", "name": "...", "address": "...", "category": "..."}]
+
+
+@api_router.post("/generate-descriptions")
+async def generate_descriptions(request: GenerateDescRequest):
+    """Generate short descriptions for locations missing them, using Gemini."""
+    if not EMERGENT_LLM_KEY:
+        raise HTTPException(status_code=500, detail="LLM key not configured")
+
+    from emergentintegrations.llm.chat import LlmChat, UserMessage
+
+    results = []
+    for item in request.places:
+        place_id = item.get("id", "")
+        name = item.get("name", "")
+        address = item.get("address", "")
+        cat = item.get("category", "")
+        try:
+            chat = LlmChat(
+                api_key=EMERGENT_LLM_KEY,
+                session_id=f"desc-{uuid.uuid4()}",
+                system_message="You are a concise location description writer. Write engaging, factual mini-descriptions for businesses and places. Keep descriptions under 500 characters. Output the description text directly with no quotes."
+            ).with_model("gemini", "gemini-2.5-flash")
+
+            prompt = f"Write a short, engaging description (max 500 chars) for: {name}"
+            if address:
+                prompt += f" at {address}"
+            if cat:
+                prompt += f" (Category: {cat})"
+
+            response = await chat.send_message(UserMessage(text=prompt))
+            desc = response.strip().strip('"').strip("'")
+            if len(desc) > 500:
+                desc = desc[:497] + "..."
+            results.append({"id": place_id, "description": desc, "success": True})
+        except Exception as e:
+            logger.error(f"Description gen error for {name}: {e}")
+            results.append({"id": place_id, "description": None, "success": False, "error": str(e)})
+
+    succeeded = sum(1 for r in results if r["success"])
+    return {"success": True, "results": results, "generated": succeeded, "total": len(results)}
 
 
 # ======== SHORT.IO LINK SHORTENING ========

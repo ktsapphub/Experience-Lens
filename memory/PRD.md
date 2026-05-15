@@ -27,6 +27,12 @@ Build a Google Maps information scraper with category-based and specific locatio
 - [x] CSV export uses short URLs when available
 - [x] Image count badges, broken image exclusion from CSV
 - [x] New/Seen badges, Remove, Selection checkboxes, Pagination
+- [x] Gemini AI description generation (single + bulk for missing)
+- [x] Hex color overlay per category + Color column in CSV export
+- [x] **25 results per page** (Feb 2026)
+- [x] **Selection persists across pagination** — "Select All" / "Select Page" merges into a stable id-based Set; cards stay checked across page navigation (Feb 2026)
+- [x] **Mass description update across all pages** — "Generate N Selected Descriptions" scopes to selected items across every page, not only current view (Feb 2026)
+- [x] **Shorten Selected across all pages** — bulk shortening operates on all selected items regardless of page (Feb 2026)
 
 ## Prioritized Backlog
 ### P1
