@@ -264,10 +264,23 @@ function LocationCard({ place, index, isSelected, onSelect, isNew, onRemove, onI
             loading="lazy"
           />
         )}
-        {place.rating && (
-          <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm px-2 py-1 rounded flex items-center gap-1">
-            <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-            <span className="text-sm font-medium">{place.rating.toFixed(1)}</span>
+        <div className="absolute top-3 right-3 flex items-center gap-1.5">
+          {place.rating && (
+            <div className="bg-white/90 backdrop-blur-sm px-2 py-1 rounded flex items-center gap-1">
+              <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+              <span className="text-sm font-medium">{place.rating.toFixed(1)}</span>
+            </div>
+          )}
+          {place.price_range && (
+            <div className="bg-white/90 backdrop-blur-sm px-2 py-1 rounded">
+              <span className="text-sm font-semibold text-emerald-700">{place.price_range}</span>
+            </div>
+          )}
+        </div>
+        {/* Image count indicator */}
+        {place.photos?.length > 0 && (
+          <div className="absolute bottom-2 right-2 bg-black/60 text-white px-2 py-0.5 rounded text-xs backdrop-blur-sm flex items-center gap-1" data-testid={`image-count-${index}`}>
+            {place.photos.length} image{place.photos.length !== 1 ? "s" : ""}
           </div>
         )}
       </div>
@@ -537,7 +550,7 @@ function SearchPage() {
   // Track failed image URLs
   const handleImageError = useCallback((placeId, imageUrl) => {
     setFailedImages(prev => {
-      const placeFailures = prev[placeId] || new Set();
+      const placeFailures = new Set(prev[placeId] || []);
       placeFailures.add(imageUrl);
       return { ...prev, [placeId]: placeFailures };
     });
@@ -741,10 +754,14 @@ function SearchPage() {
       }
     }
 
-    // Filter out failed images from export data
+    // Filter out failed/broken images from export data — only include URLs that rendered
     const cleanedData = dataToExport.map(place => {
-      const placeFailures = failedImages[place.id] || new Set();
-      const validPhotos = (place.photos || []).filter(photo => !placeFailures.has(photo.url));
+      const placeFailures = failedImages[place.id];
+      const validPhotos = (place.photos || []).filter(photo => {
+        if (!photo.url) return false;
+        if (placeFailures && placeFailures.has(photo.url)) return false;
+        return true;
+      });
       return {
         ...place,
         photos: validPhotos
@@ -769,7 +786,7 @@ function SearchPage() {
       console.error("Export error:", error);
       toast.error("Failed to export CSV");
     }
-  }, [visiblePlaces, visibleAllPlaces, category, location, region, selectedIds]);
+  }, [visiblePlaces, visibleAllPlaces, category, location, region, selectedIds, failedImages]);
 
   const handleKeyPress = (e) => {
     if (e.key === 'Enter') {
