@@ -28,6 +28,10 @@ db = client[os.environ['DB_NAME']]
 # Google Places API key
 GOOGLE_PLACES_API_KEY = os.environ.get('GOOGLE_PLACES_API_KEY', '')
 
+# Short.io config
+SHORTIO_API_KEY = os.environ.get('SHORTIO_API_KEY', '')
+SHORTIO_DOMAIN = os.environ.get('SHORTIO_DOMAIN', '')
+
 # Password hashing
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -892,6 +896,100 @@ async def get_search_history(limit: int = Query(default=10, le=100)):
         {"_id": 0, "id": 1, "category": 1, "location": 1, "results_count": 1, "timestamp": 1}
     ).sort("timestamp", -1).limit(limit).to_list(length=limit)
     return {"history": history}
+
+
+
+# ======== SHORT.IO LINK SHORTENING ========
+
+class ShortenRequest(BaseModel):
+    urls: List[dict]  # [{"id": "place_id", "url": "https://..."}]
+
+
+class ShortenResult(BaseModel):
+    id: str
+    original_url: str
+    short_url: Optional[str] = None
+    success: bool = False
+    error: Optional[str] = None
+
+
+@api_router.post("/shorten-links")
+async def shorten_links(request: ShortenRequest):
+    """Shorten multiple URLs using short.io"""
+    if not SHORTIO_API_KEY or not SHORTIO_DOMAIN:
+        raise HTTPException(status_code=500, detail="Short.io is not configured")
+
+    results = []
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        for item in request.urls:
+            place_id = item.get("id", "")
+            original_url = item.get("url", "")
+            if not original_url:
+                results.append(ShortenResult(id=place_id, original_url="", success=False, error="No URL"))
+                continue
+            try:
+                resp = await client.post(
+                    "https://api.short.io/links",
+                    headers={
+                        "Authorization": SHORTIO_API_KEY,
+                        "Content-Type": "application/json",
+                        "Accept": "application/json",
+                    },
+                    json={
+                        "originalURL": original_url,
+                        "domain": SHORTIO_DOMAIN,
+                        "allowDuplicates": False,
+                    },
+                )
+                data = resp.json()
+                if resp.status_code in (200, 201) and data.get("shortURL"):
+                    results.append(ShortenResult(
+                        id=place_id,
+                        original_url=original_url,
+                        short_url=data["shortURL"],
+                        success=True,
+                    ))
+                else:
+                    # Duplicate link — short.io returns the existing one
+                    if data.get("shortURL"):
+                        results.append(ShortenResult(
+                            id=place_id, original_url=original_url,
+                            short_url=data["shortURL"], success=True,
+                        ))
+                    else:
+                        err = data.get("message") or data.get("error") or str(resp.status_code)
+                        results.append(ShortenResult(
+                            id=place_id, original_url=original_url,
+                            success=False, error=err,
+                        ))
+            except Exception as e:
+                results.append(ShortenResult(
+                    id=place_id, original_url=original_url,
+                    success=False, error=str(e),
+                ))
+
+    succeeded = sum(1 for r in results if r.success)
+    return {"success": True, "results": [r.model_dump() for r in results], "shortened": succeeded, "total": len(results)}
+
+
+@api_router.get("/shorten-status")
+async def get_shorten_status():
+    """Check if short.io is configured and reachable."""
+    if not SHORTIO_API_KEY or not SHORTIO_DOMAIN:
+        return {"connected": False, "domain": "", "error": "Not configured"}
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.post(
+                "https://api.short.io/links",
+                headers={"Authorization": SHORTIO_API_KEY, "Content-Type": "application/json"},
+                json={"originalURL": "https://short.io", "domain": SHORTIO_DOMAIN, "allowDuplicates": False},
+            )
+            if resp.status_code in (200, 201, 409):
+                return {"connected": True, "domain": SHORTIO_DOMAIN, "error": None}
+            else:
+                return {"connected": False, "domain": SHORTIO_DOMAIN, "error": f"Status {resp.status_code}"}
+    except Exception as e:
+        return {"connected": False, "domain": SHORTIO_DOMAIN, "error": str(e)}
 
 
 

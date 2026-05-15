@@ -46,7 +46,8 @@ import {
   Clock,
   Settings,
   Info,
-  Phone
+  Phone,
+  Link2
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import HistoryPage from "@/pages/HistoryPage";
@@ -177,7 +178,7 @@ const CATEGORY_IMAGES = {
 };
 
 // Location Card Component
-function LocationCard({ place, index, isSelected, onSelect, isNew, onRemove, onImageError }) {
+function LocationCard({ place, index, isSelected, onSelect, isNew, onRemove, onImageError, shortLinkStatus }) {
   const [imageError, setImageError] = useState({});
   const category = CATEGORIES.find(c => c.id === place.category);
   const CategoryIcon = category?.icon || MapPin;
@@ -186,6 +187,9 @@ function LocationCard({ place, index, isSelected, onSelect, isNew, onRemove, onI
   
   // Check if description is missing
   const isMissingDescription = !place.description || place.description.trim() === "";
+  
+  // Short link info
+  const sl = shortLinkStatus || {};
   
   const handleImageError = (idx, photoUrl) => {
     setImageError(prev => ({ ...prev, [idx]: true }));
@@ -337,17 +341,36 @@ function LocationCard({ place, index, isSelected, onSelect, isNew, onRemove, onI
 
         <div className="flex flex-wrap gap-2 pt-2">
           {place.website && (
-            <a
-              href={place.website}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
-              data-testid={`website-link-${index}`}
-            >
-              <Globe className="w-3 h-3" />
-              Website
-              <ExternalLink className="w-3 h-3" />
-            </a>
+            <div className="inline-flex items-center gap-1">
+              <a
+                href={sl.status === 'success' ? sl.short_url : place.website}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
+                data-testid={`website-link-${index}`}
+              >
+                <Globe className="w-3 h-3" />
+                {sl.status === 'success' ? (
+                  <span className="font-medium">{sl.short_url.replace('https://', '')}</span>
+                ) : (
+                  "Website"
+                )}
+                <ExternalLink className="w-3 h-3" />
+              </a>
+              {sl.status === 'pending' && (
+                <Loader2 className="w-3 h-3 text-primary animate-spin" />
+              )}
+              {sl.status === 'success' && (
+                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-emerald-100 text-emerald-700" data-testid={`short-link-success-${index}`}>
+                  <Link2 className="w-2.5 h-2.5" /> Shortened
+                </span>
+              )}
+              {sl.status === 'error' && (
+                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-red-100 text-red-600" data-testid={`short-link-error-${index}`} title={sl.error}>
+                  Failed
+                </span>
+              )}
+            </div>
           )}
           {place.phone && (
             <span className="inline-flex items-center gap-1 text-sm text-muted-foreground" data-testid={`phone-${index}`}>
@@ -541,6 +564,9 @@ function SearchPage() {
   const [removedIds, setRemovedIds] = useState(new Set());
   const [seenLocations, setSeenLocations] = useState(() => getSeenLocations());
   const [failedImages, setFailedImages] = useState({}); // Track failed image URLs per place
+  const [shortLinks, setShortLinks] = useState({}); // { placeId: { short_url, status: 'pending'|'success'|'error', error } }
+  const [shortenLoading, setShortenLoading] = useState(false);
+  const [shortioConnected, setShortioConnected] = useState(null); // null=unchecked, true/false
   const [pagination, setPagination] = useState({
     page: 1,
     totalPages: 1,
@@ -556,9 +582,58 @@ function SearchPage() {
     });
   }, []);
 
+  // Check short.io connection on mount
+  useEffect(() => {
+    axios.get(`${API}/shorten-status`).then(r => {
+      setShortioConnected(r.data.connected);
+    }).catch(() => setShortioConnected(false));
+  }, []);
+
   // Filter out removed locations
   const visiblePlaces = places.filter(p => !removedIds.has(p.id));
   const visibleAllPlaces = allPlaces.filter(p => !removedIds.has(p.id));
+
+  // Shorten links for selected or all visible locations
+  const handleShortenLinks = useCallback(async (type = 'selected') => {
+    const targets = type === 'selected'
+      ? visiblePlaces.filter(p => selectedIds.has(p.id) && p.website)
+      : visiblePlaces.filter(p => p.website);
+    
+    if (targets.length === 0) {
+      toast.error("No locations with websites to shorten");
+      return;
+    }
+
+    // Mark all as pending
+    const pendingState = {};
+    targets.forEach(p => { pendingState[p.id] = { status: 'pending', short_url: null, error: null }; });
+    setShortLinks(prev => ({ ...prev, ...pendingState }));
+    setShortenLoading(true);
+
+    try {
+      const urls = targets.map(p => ({ id: p.id, url: p.website }));
+      const resp = await axios.post(`${API}/shorten-links`, { urls });
+      if (resp.data.success) {
+        const newState = {};
+        resp.data.results.forEach(r => {
+          newState[r.id] = {
+            status: r.success ? 'success' : 'error',
+            short_url: r.short_url,
+            error: r.error,
+          };
+        });
+        setShortLinks(prev => ({ ...prev, ...newState }));
+        toast.success(`Shortened ${resp.data.shortened}/${resp.data.total} links`);
+      }
+    } catch (err) {
+      targets.forEach(p => {
+        setShortLinks(prev => ({ ...prev, [p.id]: { status: 'error', short_url: null, error: 'Request failed' } }));
+      });
+      toast.error("Failed to shorten links");
+    } finally {
+      setShortenLoading(false);
+    }
+  }, [visiblePlaces, selectedIds]);
 
   // Remove a location from results
   const removeLocation = (placeId) => {
@@ -754,7 +829,7 @@ function SearchPage() {
       }
     }
 
-    // Filter out failed/broken images from export data — only include URLs that rendered
+    // Filter out failed/broken images and swap in short URLs for export
     const cleanedData = dataToExport.map(place => {
       const placeFailures = failedImages[place.id];
       const validPhotos = (place.photos || []).filter(photo => {
@@ -762,9 +837,13 @@ function SearchPage() {
         if (placeFailures && placeFailures.has(photo.url)) return false;
         return true;
       });
+      // Use short URL if successfully shortened
+      const sl = shortLinks[place.id];
+      const website = (sl && sl.status === 'success' && sl.short_url) ? sl.short_url : place.website;
       return {
         ...place,
-        photos: validPhotos
+        photos: validPhotos,
+        website,
       };
     });
 
@@ -786,7 +865,7 @@ function SearchPage() {
       console.error("Export error:", error);
       toast.error("Failed to export CSV");
     }
-  }, [visiblePlaces, visibleAllPlaces, categories, location, region, selectedIds, failedImages]);
+  }, [visiblePlaces, visibleAllPlaces, categories, location, region, selectedIds, failedImages, shortLinks]);
 
   const handleKeyPress = (e) => {
     if (e.key === 'Enter') {
@@ -1189,6 +1268,40 @@ function SearchPage() {
                     </Button>
                   )}
                 </div>
+
+                {/* Short.io Controls */}
+                <div className="flex items-center gap-2 border-r border-border pr-4">
+                  {shortioConnected && (
+                    <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200" data-testid="shortio-connected">
+                      <Link2 className="w-3 h-3" /> short.io
+                    </span>
+                  )}
+                  {selectedIds.size > 0 ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleShortenLinks('selected')}
+                      disabled={shortenLoading}
+                      className="text-xs h-8"
+                      data-testid="shorten-selected-btn"
+                    >
+                      {shortenLoading ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Link2 className="w-3 h-3 mr-1" />}
+                      Shorten Selected ({selectedIds.size})
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleShortenLinks('all')}
+                      disabled={shortenLoading}
+                      className="text-xs h-8"
+                      data-testid="shorten-all-btn"
+                    >
+                      {shortenLoading ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Link2 className="w-3 h-3 mr-1" />}
+                      Shorten All Links
+                    </Button>
+                  )}
+                </div>
                 
                 <span className="text-sm text-muted-foreground">
                   Page {pagination.page} of {pagination.totalPages}
@@ -1214,6 +1327,7 @@ function SearchPage() {
                     isNew={!seenLocations.has(place.id)}
                     onRemove={removeLocation}
                     onImageError={handleImageError}
+                    shortLinkStatus={shortLinks[place.id]}
                   />
                 ))}
               </div>

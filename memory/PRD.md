@@ -1,57 +1,43 @@
 # MapData Collector - Product Requirements Document
 
 ## Original Problem Statement
-Build a Google Maps information scraper that pulls location data with category-based and specific location searches. Includes an Import page for cross-checking and enriching existing location data from CSV/Excel files.
+Build a Google Maps information scraper with category-based and specific location searches. Features URL shortening via short.io for custom domain links.
 
 ## Tech Stack
 - Frontend: React + Tailwind CSS + shadcn/ui + react-router-dom
 - Backend: FastAPI + Motor (async MongoDB)
 - Database: MongoDB
-- External APIs: Google Places API (New), Google Gemini (via Emergent LLM key)
+- External APIs: Google Places API (New), short.io (link.mydatejar.com)
 
 ## Pages
-1. **Search** — Category/location-based search with results grid, pagination, export
-2. **Import** — CSV/Excel upload, field selection checklist, cross-check vs Google, discrepancy resolution, AI descriptions, image preview, export
-3. **History** — Past search records with expandable results
-4. **Config** — System info and experience type keyword management
+1. **Search** — Multi-category search, results grid, URL shortening, CSV export
+2. **History** — Past search records
+3. **Config** — System info and keyword management
 
-## Data Fields
-Name, Address, Latitude, Longitude, Description, Category (5 types), Price Range ($/$$/$$), Phone, Website, Instagram (handle + URL), Rating, Images (up to 3)
-
-## Completed Features (All Tested)
+## Completed Features
+- [x] Multi-category selection (toggle any combination of 5 categories)
 - [x] Google Places API integration & search
 - [x] Instagram scraping from business websites
-- [x] Yellow border for missing descriptions
-- [x] Broken image handling
+- [x] Phone, Price Range ($/$$/$$) from Google Places
+- [x] Yellow border for missing descriptions, broken image handling
 - [x] Search progress indicator (3 phases)
 - [x] Specific Places search without category
-- [x] Phone number in results and exports
-- [x] Price Range ($/$$/$$$ from Google priceLevel)
-- [x] Import page with full feature set:
-  - [x] CSV/Excel upload
-  - [x] "What do you want to fix?" field selection checklist (11 fields)
-  - [x] Cross-check only selected fields against Google
-  - [x] Price Range dropdown on cards
-  - [x] Image gallery with green badge + preview modal
-  - [x] Instagram @handle display with full URL link
-  - [x] Experience Type editable dropdown
-  - [x] Discrepancy resolution (side-by-side picker)
-  - [x] AI description generation (Gemini, max 500 chars)
-  - [x] Export All / Export Selected with all fields
+- [x] short.io integration — bulk/individual URL shortening to link.mydatejar.com
+- [x] Short link status indicators (pending/success/error) per card
+- [x] CSV export uses short URLs when available
+- [x] Image count badges, broken image exclusion from CSV
+- [x] New/Seen badges, Remove, Selection checkboxes, Pagination
 
 ## Prioritized Backlog
-### P1 (High Priority)
-- [ ] Saved Searches — Save/load search configurations
-- [ ] Map View — Toggle to display results on a map
-- [ ] Rating Filter — Filter by minimum star rating
-- [ ] Secure Routes — Token-based session management
+### P1
+- [ ] Saved Searches
+- [ ] Map View
+- [ ] Rating Filter
+- [ ] Secure Routes
 
-### P2 (Medium Priority)
-- [ ] Add Notes to Locations
-- [ ] Filter by "New" results only
-- [ ] Combine Multiple Categories
-- [ ] App.js refactoring into smaller components
+### P2
+- [ ] Notes, Filter by "New", Refactor App.js
 
 ## Key Credentials
-- Email: joseph@centurion-pm.com
-- Password: #Test1234
+- Email: joseph@centurion-pm.com / #Test1234
+- short.io domain: link.mydatejar.com
