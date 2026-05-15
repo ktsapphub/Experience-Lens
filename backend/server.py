@@ -96,7 +96,8 @@ class PlaceResult(BaseModel):
 
 
 class SearchRequest(BaseModel):
-    category: str = ""  # Optional for specific location searches
+    category: str = ""  # Single category (backwards compat)
+    categories: List[str] = []  # Multiple categories
     location: str = ""  # City, area, or zip code
     region: str = ""  # Optional region filter
     location_names: List[str] = []  # Optional specific location names (up to 10)
@@ -498,14 +499,19 @@ async def search_places(request: SearchRequest):
             detail="Google Places API is not configured. Please add GOOGLE_PLACES_API_KEY to backend/.env"
         )
     
-    if request.category and request.category not in CATEGORY_TYPES:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Invalid category. Valid categories: {list(CATEGORY_TYPES.keys())}"
-        )
+    # Normalize categories: support both single and multi
+    categories = request.categories if request.categories else ([request.category] if request.category else [])
+    categories = [c for c in categories if c]  # Remove blanks
+    
+    for cat in categories:
+        if cat not in CATEGORY_TYPES:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid category '{cat}'. Valid categories: {list(CATEGORY_TYPES.keys())}"
+            )
     
     # Category is required unless searching by specific location names
-    if not request.category and not request.location_names:
+    if not categories and not request.location_names:
         raise HTTPException(
             status_code=400,
             detail="Please select a category, or use specific location names to search without one"
@@ -553,11 +559,11 @@ async def search_places(request: SearchRequest):
         seen_ids = set()  # Track unique place IDs to prevent duplicates
         seen_names_addresses = set()  # Track name+address combos for additional dedup
         
-        # Get keywords for this category (empty if no category)
-        keywords = CATEGORY_KEYWORDS.get(request.category, "") if request.category else ""
-        
         # Determine if this is a direct location name search (no category)
-        is_direct_search = not request.category and bool(request.location_names)
+        is_direct_search = not categories and bool(request.location_names)
+        
+        # Build category search list — if no categories, use one pass with empty keywords
+        category_list = categories if categories else [""]
         
         headers = {
             "X-Goog-Api-Key": GOOGLE_PLACES_API_KEY,
@@ -565,13 +571,16 @@ async def search_places(request: SearchRequest):
         }
         
         async with httpx.AsyncClient(timeout=30.0) as http_client:
+          for current_category in category_list:
+            # Get keywords for this category
+            keywords = CATEGORY_KEYWORDS.get(current_category, "") if current_category else ""
+            
             # Search across all provided locations
             for search_location in search_locations:
                 if len(all_places) >= 60:  # Cap total results
                     break
                 
                 # Use Text Search API (New) for better results
-                # Direct search uses location name as-is; category search prepends keywords
                 if is_direct_search:
                     text_query = search_location
                 else:
@@ -638,7 +647,7 @@ async def search_places(request: SearchRequest):
                         photos=photos,
                         rating=place.get("rating"),
                         price_range=map_price_level(place),
-                        category=request.category
+                        category=current_category
                     )
                     
                     # Deduplication check by ID and name+address
@@ -653,7 +662,7 @@ async def search_places(request: SearchRequest):
                     all_places.append(place_result)
             
             # Make additional searches with specific place types to get more results (only with category)
-            place_types = CATEGORY_TYPES.get(request.category, []) if request.category else []
+            place_types = CATEGORY_TYPES.get(current_category, []) if current_category else []
             
             for place_type in place_types[:2]:
                 if len(all_places) >= 60:  # Cap at 60 total results
@@ -717,7 +726,7 @@ async def search_places(request: SearchRequest):
                             photos=photos,
                             rating=place.get("rating"),
                             price_range=map_price_level(place),
-                            category=request.category
+                            category=current_category
                         )
                         
                         # Deduplication check by ID and name+address
@@ -755,7 +764,7 @@ async def search_places(request: SearchRequest):
         
         search_history = {
             "id": str(uuid.uuid4()),
-            "category": request.category,
+            "category": ",".join(categories) if categories else "",
             "search_method": search_method,
             "location": request.location,
             "region": request.region,

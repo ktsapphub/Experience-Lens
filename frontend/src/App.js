@@ -528,7 +528,7 @@ function Pagination({ page, totalPages, onPageChange, disabled }) {
 
 // Search Page Component
 function SearchPage() {
-  const [category, setCategory] = useState("");
+  const [categories, setCategories] = useState([]);
   const [searchTab, setSearchTab] = useState("location");
   const [location, setLocation] = useState("");
   const [region, setRegion] = useState("");
@@ -641,8 +641,8 @@ function SearchPage() {
 
   const handleSearch = useCallback(async (page = 1) => {
     // Category is required for location/region search, optional for specific places
-    if (!category && searchTab !== "specific") {
-      toast.error("Please select a category");
+    if (categories.length === 0 && searchTab !== "specific") {
+      toast.error("Please select at least one category");
       return;
     }
     
@@ -667,7 +667,7 @@ function SearchPage() {
         : [];
       
       const response = await axios.post(`${API}/places/search`, {
-        category,
+        categories,
         location: searchTab === "location" ? location.trim() : "",
         region: searchTab === "region" ? region : "",
         location_names: filteredLocationNames,
@@ -705,14 +705,14 @@ function SearchPage() {
     } finally {
       setLoading(false);
     }
-  }, [category, location, region, locationNames, searchTab]);
+  }, [categories, location, region, locationNames, searchTab]);
 
   const fetchAllPagesForExport = async (totalPages, filteredLocationNames) => {
     try {
       const allResults = [];
       for (let p = 1; p <= totalPages; p++) {
         const response = await axios.post(`${API}/places/search`, {
-          category,
+          categories,
           location: searchTab === "location" ? location.trim() : "",
           region: searchTab === "region" ? region : "",
           location_names: filteredLocationNames,
@@ -776,7 +776,7 @@ function SearchPage() {
       link.href = url;
       const locationPart = location || region || 'locations';
       const suffix = exportType === 'selected' ? '-selected' : '';
-      link.download = `${category}-${locationPart.replace(/\s+/g, '-')}${suffix}.csv`;
+      link.download = `${categories.join('-') || 'search'}-${locationPart.replace(/\s+/g, '-')}${suffix}.csv`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -786,7 +786,7 @@ function SearchPage() {
       console.error("Export error:", error);
       toast.error("Failed to export CSV");
     }
-  }, [visiblePlaces, visibleAllPlaces, category, location, region, selectedIds, failedImages]);
+  }, [visiblePlaces, visibleAllPlaces, categories, location, region, selectedIds, failedImages]);
 
   const handleKeyPress = (e) => {
     if (e.key === 'Enter') {
@@ -794,7 +794,7 @@ function SearchPage() {
     }
   };
 
-  const selectedCategory = CATEGORIES.find(c => c.id === category);
+  const selectedCategories = CATEGORIES.filter(c => categories.includes(c.id));
   const selectedRegion = region ? US_REGIONS[region] : null;
 
   return (
@@ -893,12 +893,16 @@ function SearchPage() {
               <TooltipProvider delayDuration={200}>
                 {CATEGORIES.map((cat) => {
                   const Icon = cat.icon;
-                  const isSelected = category === cat.id;
+                  const isSelected = categories.includes(cat.id);
                   return (
                     <Tooltip key={cat.id}>
                       <TooltipTrigger asChild>
                         <button
-                          onClick={() => setCategory(cat.id)}
+                          onClick={() => setCategories(prev => 
+                            prev.includes(cat.id) 
+                              ? prev.filter(c => c !== cat.id) 
+                              : [...prev, cat.id]
+                          )}
                           className={`relative p-4 rounded-xl border-2 transition-all duration-200 text-left group ${
                             isSelected 
                               ? 'border-primary bg-primary/5 shadow-md' 
@@ -1081,7 +1085,7 @@ function SearchPage() {
           <div className="flex justify-center">
             <Button
               onClick={() => handleSearch(1)}
-              disabled={loading || (!category && searchTab !== "specific")}
+              disabled={loading || (categories.length === 0 && searchTab !== "specific")}
               size="lg"
               className="h-14 px-12 text-base font-medium bg-primary hover:bg-primary/90 shadow-lg hover:shadow-xl transition-all"
               data-testid="search-button"
@@ -1116,11 +1120,11 @@ function SearchPage() {
                     </span>
                   )}
                 </span>
-                {selectedCategory && (
-                  <Badge className={`${selectedCategory.color} text-white border-0`}>
-                    {selectedCategory.name}
+                {selectedCategories.length > 0 && selectedCategories.map(cat => (
+                  <Badge key={cat.id} className={`${cat.color} text-white border-0`}>
+                    {cat.name}
                   </Badge>
-                )}
+                ))}
                 {searchTab === "location" && location && (
                   <span className="text-muted-foreground">in {location}</span>
                 )}
