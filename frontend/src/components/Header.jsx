@@ -1,6 +1,34 @@
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Map, Search, Clock, Settings } from "lucide-react";
+import { Map, Search, Clock, Settings, LogIn, LogOut, User as UserIcon } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+
+function AuthNav() {
+  const { user, logout } = useAuth();
+  if (user === null) return null;
+  if (user === false) {
+    return (
+      <Link to="/login">
+        <Button variant="ghost" size="sm" className="text-sm" data-testid="nav-login">
+          <LogIn className="w-4 h-4 mr-1" />
+          Sign in
+        </Button>
+      </Link>
+    );
+  }
+  return (
+    <div className="flex items-center gap-1 pl-2 ml-2 border-l border-border" data-testid="nav-user">
+      <div className="flex items-center gap-1.5 px-2 text-xs text-muted-foreground">
+        <UserIcon className="w-3.5 h-3.5" />
+        <span className="hidden sm:inline truncate max-w-[140px]" title={user.email}>{user.email}</span>
+      </div>
+      <Button variant="ghost" size="sm" className="text-sm" onClick={logout} data-testid="nav-logout">
+        <LogOut className="w-4 h-4 mr-1" />
+        Logout
+      </Button>
+    </div>
+  );
+}
 
 export default function Header({ children }) {
   const location = useLocation();
@@ -55,6 +83,7 @@ export default function Header({ children }) {
                   Config
                 </Button>
               </Link>
+              <AuthNav />
             </nav>
           </div>
           

@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Query
+from fastapi import FastAPI, APIRouter, HTTPException, Query, Depends, Request
 from fastapi.responses import StreamingResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
@@ -9,12 +9,13 @@ from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict, EmailStr
 from typing import List, Optional
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import httpx
 import csv
 import io
 import re
 import asyncio
+import jwt
 from passlib.context import CryptContext
 
 ROOT_DIR = Path(__file__).parent
@@ -34,6 +35,42 @@ SHORTIO_DOMAIN = os.environ.get('SHORTIO_DOMAIN', '')
 
 # Password hashing
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+# JWT config
+JWT_SECRET = os.environ['JWT_SECRET']
+JWT_ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_HOURS = 24 * 7  # 7 days
+
+
+def create_access_token(user_id: str, email: str) -> str:
+    payload = {
+        "sub": user_id,
+        "email": email,
+        "exp": datetime.now(timezone.utc) + timedelta(hours=ACCESS_TOKEN_EXPIRE_HOURS),
+        "type": "access",
+    }
+    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+
+async def get_current_user(request: Request) -> dict:
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    token = auth_header[7:]
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token expired")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    if payload.get("type") != "access":
+        raise HTTPException(status_code=401, detail="Invalid token type")
+    user_id = payload.get("sub")
+    user = await db.users.find_one({"id": user_id}, {"_id": 0, "password": 0})
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+    return user
+
 
 # Create the main app without a prefix
 app = FastAPI()
@@ -297,9 +334,9 @@ async def root():
 
 
 # User Authentication Endpoints
-@api_router.post("/auth/register", response_model=UserResponse)
+@api_router.post("/auth/register")
 async def register_user(user: UserCreate):
-    """Register a new user"""
+    """Register a new user and return an access token"""
     # Check if user already exists
     existing_user = await db.users.find_one({"email": user.email.lower()})
     if existing_user:
@@ -316,16 +353,22 @@ async def register_user(user: UserCreate):
     
     await db.users.insert_one(user_doc)
     
-    return UserResponse(
-        id=user_doc["id"],
-        email=user_doc["email"],
-        created_at=user_doc["created_at"]
-    )
+    token = create_access_token(user_doc["id"], user_doc["email"])
+    return {
+        "success": True,
+        "access_token": token,
+        "token_type": "bearer",
+        "user": {
+            "id": user_doc["id"],
+            "email": user_doc["email"],
+            "created_at": user_doc["created_at"],
+        },
+    }
 
 
 @api_router.post("/auth/login")
 async def login_user(user: UserLogin):
-    """Login user"""
+    """Login user and return an access token"""
     db_user = await db.users.find_one({"email": user.email.lower()})
     
     if not db_user:
@@ -334,13 +377,25 @@ async def login_user(user: UserLogin):
     if not pwd_context.verify(user.password, db_user["password"]):
         raise HTTPException(status_code=401, detail="Invalid email or password")
     
+    token = create_access_token(db_user["id"], db_user["email"])
     return {
         "success": True,
-        "message": "Login successful",
+        "access_token": token,
+        "token_type": "bearer",
         "user": {
             "id": db_user["id"],
-            "email": db_user["email"]
-        }
+            "email": db_user["email"],
+        },
+    }
+
+
+@api_router.get("/auth/me")
+async def get_me(current_user: dict = Depends(get_current_user)):
+    """Get the currently authenticated user"""
+    return {
+        "id": current_user["id"],
+        "email": current_user["email"],
+        "created_at": current_user.get("created_at"),
     }
 
 
@@ -382,7 +437,7 @@ async def get_config():
 
 
 @api_router.put("/config/category")
-async def update_category_config(config: ConfigUpdate):
+async def update_category_config(config: ConfigUpdate, current_user: dict = Depends(get_current_user)):
     """Update category configuration"""
     global CATEGORY_TYPES, CATEGORY_KEYWORDS
     
@@ -418,7 +473,7 @@ async def update_category_config(config: ConfigUpdate):
 
 
 @api_router.post("/config/reset")
-async def reset_config():
+async def reset_config(current_user: dict = Depends(get_current_user)):
     """Reset configuration to defaults"""
     global CATEGORY_TYPES, CATEGORY_KEYWORDS
     CATEGORY_TYPES = DEFAULT_CATEGORY_TYPES.copy()
@@ -429,7 +484,7 @@ async def reset_config():
 
 # Enhanced Search History Endpoints
 @api_router.get("/history")
-async def get_search_history(limit: int = Query(default=50, le=200)):
+async def get_search_history(limit: int = Query(default=50, le=200), current_user: dict = Depends(get_current_user)):
     """Get detailed search history"""
     history = await db.search_history.find(
         {},
@@ -439,7 +494,7 @@ async def get_search_history(limit: int = Query(default=50, le=200)):
 
 
 @api_router.get("/history/{history_id}")
-async def get_history_entry(history_id: str):
+async def get_history_entry(history_id: str, current_user: dict = Depends(get_current_user)):
     """Get single history entry with full results"""
     entry = await db.search_history.find_one(
         {"id": history_id},
@@ -451,7 +506,7 @@ async def get_history_entry(history_id: str):
 
 
 @api_router.delete("/history/{history_id}")
-async def delete_history_entry(history_id: str):
+async def delete_history_entry(history_id: str, current_user: dict = Depends(get_current_user)):
     """Delete a history entry"""
     result = await db.search_history.delete_one({"id": history_id})
     if result.deleted_count == 0:
@@ -460,7 +515,7 @@ async def delete_history_entry(history_id: str):
 
 
 @api_router.delete("/history")
-async def clear_history():
+async def clear_history(current_user: dict = Depends(get_current_user)):
     """Clear all search history"""
     await db.search_history.delete_many({})
     return {"success": True, "message": "All history cleared"}
@@ -908,7 +963,7 @@ async def export_places_to_csv(places: List[PlaceResult]):
 
 
 @api_router.get("/search-history")
-async def get_search_history(limit: int = Query(default=10, le=100)):
+async def get_search_history(limit: int = Query(default=10, le=100), current_user: dict = Depends(get_current_user)):
     """Get recent search history"""
     history = await db.search_history.find(
         {},

@@ -47,11 +47,17 @@ import {
   Settings,
   Info,
   Phone,
-  Link2
+  Link2,
+  LogIn,
+  LogOut,
+  User as UserIcon
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import HistoryPage from "@/pages/HistoryPage";
 import ConfigPage from "@/pages/ConfigPage";
+import LoginPage from "@/pages/LoginPage";
+import ProtectedRoute from "@/components/ProtectedRoute";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 
 // Helper to get seen locations from localStorage
 const getSeenLocations = () => {
@@ -573,6 +579,35 @@ function Pagination({ page, totalPages, onPageChange, disabled }) {
   );
 }
 
+// Auth nav (login or user + logout)
+function AuthNav() {
+  const { user, logout } = useAuth();
+  if (user === null) return null; // still checking
+  if (user === false) {
+    return (
+      <Link to="/login">
+        <Button variant="ghost" size="sm" className="text-sm" data-testid="nav-login">
+          <LogIn className="w-4 h-4 mr-1" />
+          Sign in
+        </Button>
+      </Link>
+    );
+  }
+  return (
+    <div className="flex items-center gap-1 pl-2 ml-2 border-l border-border" data-testid="nav-user">
+      <div className="flex items-center gap-1.5 px-2 text-xs text-muted-foreground">
+        <UserIcon className="w-3.5 h-3.5" />
+        <span className="hidden sm:inline truncate max-w-[140px]" title={user.email}>{user.email}</span>
+      </div>
+      <Button variant="ghost" size="sm" className="text-sm" onClick={logout} data-testid="nav-logout">
+        <LogOut className="w-4 h-4 mr-1" />
+        Logout
+      </Button>
+    </div>
+  );
+}
+
+
 // Search Page Component
 function SearchPage() {
   const [categories, setCategories] = useState([]);
@@ -987,17 +1022,18 @@ function SearchPage() {
                   </Button>
                 </Link>
                 <Link to="/history">
-                  <Button variant="ghost" size="sm" className="text-sm">
+                  <Button variant="ghost" size="sm" className="text-sm" data-testid="nav-history">
                     <Clock className="w-4 h-4 mr-1" />
                     History
                   </Button>
                 </Link>
                 <Link to="/config">
-                  <Button variant="ghost" size="sm" className="text-sm">
+                  <Button variant="ghost" size="sm" className="text-sm" data-testid="nav-config">
                     <Settings className="w-4 h-4 mr-1" />
                     Config
                   </Button>
                 </Link>
+                <AuthNav />
               </nav>
             </div>
             
@@ -1474,14 +1510,31 @@ function SearchPage() {
 // Main App with Router
 function App() {
   return (
-    <Router>
-      <Toaster position="top-right" richColors />
-      <Routes>
-        <Route path="/" element={<SearchPage />} />
-        <Route path="/history" element={<HistoryPage />} />
-        <Route path="/config" element={<ConfigPage />} />
-      </Routes>
-    </Router>
+    <AuthProvider>
+      <Router>
+        <Toaster position="top-right" richColors />
+        <Routes>
+          <Route path="/" element={<SearchPage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route
+            path="/history"
+            element={
+              <ProtectedRoute>
+                <HistoryPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/config"
+            element={
+              <ProtectedRoute>
+                <ConfigPage />
+              </ProtectedRoute>
+            }
+          />
+        </Routes>
+      </Router>
+    </AuthProvider>
   );
 }
 
