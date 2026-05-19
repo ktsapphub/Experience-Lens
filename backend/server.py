@@ -991,34 +991,50 @@ async def generate_descriptions(request: GenerateDescRequest):
 
     from emergentintegrations.llm.chat import LlmChat, UserMessage
 
-    results = []
-    for item in request.places:
+    # Run up to 10 LLM calls concurrently and cap each at 25s so one slow
+    # request can never block the entire batch (avoids ingress timeout).
+    semaphore = asyncio.Semaphore(10)
+
+    async def gen_one(item: dict) -> dict:
         place_id = item.get("id", "")
         name = item.get("name", "")
         address = item.get("address", "")
         cat = item.get("category", "")
-        try:
-            chat = LlmChat(
-                api_key=EMERGENT_LLM_KEY,
-                session_id=f"desc-{uuid.uuid4()}",
-                system_message="You are a concise location description writer. Write engaging, factual mini-descriptions for businesses and places. Keep descriptions under 500 characters. Output the description text directly with no quotes."
-            ).with_model("gemini", "gemini-2.5-flash")
+        if not name:
+            return {"id": place_id, "description": None, "success": False, "error": "Missing name"}
 
-            prompt = f"Write a short, engaging description (max 500 chars) for: {name}"
-            if address:
-                prompt += f" at {address}"
-            if cat:
-                prompt += f" (Category: {cat})"
+        async with semaphore:
+            try:
+                chat = LlmChat(
+                    api_key=EMERGENT_LLM_KEY,
+                    session_id=f"desc-{uuid.uuid4()}",
+                    system_message="You are a concise location description writer. Write engaging, factual mini-descriptions for businesses and places. Keep descriptions under 500 characters. Output the description text directly with no quotes."
+                ).with_model("gemini", "gemini-2.5-flash")
 
-            response = await chat.send_message(UserMessage(text=prompt))
-            desc = response.strip().strip('"').strip("'")
-            if len(desc) > 500:
-                desc = desc[:497] + "..."
-            results.append({"id": place_id, "description": desc, "success": True})
-        except Exception as e:
-            logger.error(f"Description gen error for {name}: {e}")
-            results.append({"id": place_id, "description": None, "success": False, "error": str(e)})
+                prompt = f"Write a short, engaging description (max 500 chars) for: {name}"
+                if address:
+                    prompt += f" at {address}"
+                if cat:
+                    prompt += f" (Category: {cat})"
 
+                response = await asyncio.wait_for(
+                    chat.send_message(UserMessage(text=prompt)),
+                    timeout=25.0,
+                )
+                desc = (response or "").strip().strip('"').strip("'")
+                if not desc:
+                    return {"id": place_id, "description": None, "success": False, "error": "Empty response"}
+                if len(desc) > 500:
+                    desc = desc[:497] + "..."
+                return {"id": place_id, "description": desc, "success": True}
+            except asyncio.TimeoutError:
+                logger.warning(f"Description gen timeout for {name}")
+                return {"id": place_id, "description": None, "success": False, "error": "Timeout"}
+            except Exception as e:
+                logger.error(f"Description gen error for {name}: {e}")
+                return {"id": place_id, "description": None, "success": False, "error": str(e)}
+
+    results = await asyncio.gather(*(gen_one(item) for item in request.places))
     succeeded = sum(1 for r in results if r["success"])
     return {"success": True, "results": results, "generated": succeeded, "total": len(results)}
 

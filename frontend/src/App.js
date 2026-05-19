@@ -712,21 +712,27 @@ function SearchPage() {
     try {
       const resp = await axios.post(`${API}/generate-descriptions`, {
         places: [{ id: place.id, name: place.name, address: place.address, category: place.category }]
-      });
-      if (resp.data.success && resp.data.results[0]?.success) {
-        setGeneratedDescs(prev => ({ ...prev, [placeId]: resp.data.results[0].description }));
+      }, { timeout: 55000 });
+      const result = resp.data?.results?.[0];
+      if (resp.data?.success && result?.success) {
+        setGeneratedDescs(prev => ({ ...prev, [placeId]: result.description }));
         toast.success("Description generated");
       } else {
-        toast.error("Failed to generate description");
+        toast.error(`Failed to generate description${result?.error ? `: ${result.error}` : ''}`);
       }
-    } catch {
-      toast.error("Failed to generate description");
+    } catch (err) {
+      const msg = err.response?.data?.detail || err.message || "Request failed";
+      toast.error(`Failed to generate description: ${msg}`);
     } finally {
       setGeneratingDescId(null);
     }
   }, [visiblePlaces]);
 
-  // Generate descriptions for all missing (across all pages, prioritizing selected)
+  // Generate descriptions for all missing (across all pages, prioritizing selected).
+  // The Kubernetes ingress enforces a ~60s response timeout, so we chunk the work
+  // into batches of 6 (each call ~10–15s with backend concurrency=10) and merge
+  // results so the progress bar can advance and the user sees partial results
+  // even on very large batches.
   const handleGenerateAllDescs = useCallback(async () => {
     const pool = visibleAllPlaces.length > 0 ? visibleAllPlaces : visiblePlaces;
     const hasSelection = selectedIds.size > 0;
@@ -735,18 +741,37 @@ function SearchPage() {
     if (missing.length === 0) { toast.info("All locations have descriptions"); return; }
     setGeneratingAllDescs(true);
     setGenTotal(missing.length);
+
+    const CHUNK_SIZE = 6;
+    let totalSucceeded = 0;
+    let totalProcessed = 0;
     try {
-      const resp = await axios.post(`${API}/generate-descriptions`, {
-        places: missing.map(p => ({ id: p.id, name: p.name, address: p.address, category: p.category }))
-      });
-      if (resp.data.success) {
-        const newDescs = {};
-        resp.data.results.forEach(r => { if (r.success) newDescs[r.id] = r.description; });
-        setGeneratedDescs(prev => ({ ...prev, ...newDescs }));
-        toast.success(`Generated ${resp.data.generated}/${resp.data.total} descriptions`);
+      for (let i = 0; i < missing.length; i += CHUNK_SIZE) {
+        const chunk = missing.slice(i, i + CHUNK_SIZE);
+        try {
+          const resp = await axios.post(`${API}/generate-descriptions`, {
+            places: chunk.map(p => ({ id: p.id, name: p.name, address: p.address, category: p.category }))
+          }, { timeout: 55000 });
+          if (resp.data?.success) {
+            const newDescs = {};
+            resp.data.results.forEach(r => { if (r.success) newDescs[r.id] = r.description; });
+            setGeneratedDescs(prev => ({ ...prev, ...newDescs }));
+            totalSucceeded += resp.data.generated || 0;
+          }
+        } catch (err) {
+          console.error("Description chunk failed:", err);
+          // Continue with the remaining chunks instead of aborting the whole batch
+        }
+        totalProcessed += chunk.length;
+        setGenTotal(missing.length - totalProcessed); // remaining counter
       }
-    } catch {
-      toast.error("Failed to generate descriptions");
+      if (totalSucceeded === missing.length) {
+        toast.success(`Generated ${totalSucceeded} descriptions`);
+      } else if (totalSucceeded > 0) {
+        toast.warning(`Generated ${totalSucceeded}/${missing.length} descriptions (some failed)`);
+      } else {
+        toast.error("Failed to generate descriptions");
+      }
     } finally {
       setGeneratingAllDescs(false);
       setGenTotal(0);
