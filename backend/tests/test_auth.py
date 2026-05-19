@@ -6,8 +6,16 @@ import requests
 
 BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://maps-scraper-lab.preview.emergentagent.com").rstrip("/")
 API = f"{BASE_URL}/api"
-EXISTING_EMAIL = "joseph@centurion-pm.com"
-EXISTING_PASSWORD = "#Test1234"
+# Test credentials must be supplied via environment to avoid leaking them in VCS.
+# Local development can populate /app/memory/test_credentials.md (read by the test runner).
+EXISTING_EMAIL = os.environ.get("TEST_USER_EMAIL")
+EXISTING_PASSWORD = os.environ.get("TEST_USER_PASSWORD")
+
+if not EXISTING_EMAIL or not EXISTING_PASSWORD:
+    pytest.skip(
+        "TEST_USER_EMAIL / TEST_USER_PASSWORD env vars are required to run auth tests.",
+        allow_module_level=True,
+    )
 
 
 @pytest.fixture(scope="module")
@@ -32,7 +40,7 @@ class TestLogin:
         r = session.post(f"{API}/auth/login", json={"email": EXISTING_EMAIL, "password": EXISTING_PASSWORD})
         assert r.status_code == 200
         d = r.json()
-        assert d.get("success") is True
+        assert d.get("success")
         assert isinstance(d.get("access_token"), str) and len(d["access_token"]) > 20
         assert d.get("token_type") == "bearer"
         assert d["user"]["email"] == EXISTING_EMAIL
@@ -55,7 +63,7 @@ class TestRegister:
         r = session.post(f"{API}/auth/register", json={"email": email, "password": password})
         assert r.status_code == 200, r.text
         d = r.json()
-        assert d["success"] is True
+        assert d["success"]
         assert isinstance(d.get("access_token"), str)
         assert d["user"]["email"] == email.lower()
         # Verify login works for new user

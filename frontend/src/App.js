@@ -305,7 +305,7 @@ function LocationCard({ place, index, isSelected, onSelect, isNew, onRemove, onI
       {place.photos?.length > 1 && (
         <div className="grid grid-cols-3 gap-px bg-border">
           {place.photos.slice(1, 4).map((photo, idx) => (
-            <div key={idx} className="h-16 bg-secondary">
+            <div key={photo.url || `thumb-${idx}`} className="h-16 bg-secondary">
               {imageError[`thumb-${idx}`] ? (
                 <div className="w-full h-full flex items-center justify-center bg-secondary">
                   <ImageOff className="w-4 h-4 text-muted-foreground" />
@@ -615,7 +615,7 @@ function SearchPage() {
   const [searchTab, setSearchTab] = useState("location");
   const [location, setLocation] = useState("");
   const [region, setRegion] = useState("");
-  const [locationNames, setLocationNames] = useState([{ name: "", state: "" }]);
+  const [locationNames, setLocationNames] = useState([{ id: `ln-${Date.now()}`, name: "", state: "" }]);
   const [places, setPlaces] = useState([]);
   const [allPlaces, setAllPlaces] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -841,13 +841,13 @@ function SearchPage() {
 
   const addLocationName = () => {
     if (locationNames.length < 10) {
-      setLocationNames([...locationNames, { name: "", state: "" }]);
+      setLocationNames([...locationNames, { id: `ln-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, name: "", state: "" }]);
     }
   };
 
   const removeLocationName = (index) => {
     const newNames = locationNames.filter((_, i) => i !== index);
-    setLocationNames(newNames.length > 0 ? newNames : [{ name: "", state: "" }]);
+    setLocationNames(newNames.length > 0 ? newNames : [{ id: `ln-${Date.now()}`, name: "", state: "" }]);
   };
 
   const updateLocationName = (index, field, value) => {
@@ -1268,7 +1268,7 @@ function SearchPage() {
                   
                   <div className="space-y-2">
                     {locationNames.map((loc, index) => (
-                      <div key={index} className="flex gap-2">
+                      <div key={loc.id} className="flex gap-2">
                         <div className="relative flex-1">
                           <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                           <Input

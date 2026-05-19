@@ -3,57 +3,44 @@ import axios from "axios";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
-const TOKEN_KEY = "mdc_access_token";
 
 const AuthContext = createContext(null);
 
-// Attach Authorization header from localStorage on every axios request
-axios.interceptors.request.use((config) => {
-  const token = localStorage.getItem(TOKEN_KEY);
-  if (token) {
-    config.headers = config.headers || {};
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
+// Always send cookies with axios so the httpOnly auth cookie flows on every request.
+// httpOnly + SameSite=Lax provides XSS resistance — JS cannot read the token.
+axios.defaults.withCredentials = true;
 
 export function AuthProvider({ children }) {
   // null = checking, false = unauthenticated, object = authenticated user
   const [user, setUser] = useState(null);
 
-  const logout = useCallback(() => {
-    localStorage.removeItem(TOKEN_KEY);
-    setUser(false);
-  }, []);
-
-  // Verify existing token on mount
+  // Verify existing session on mount (cookie is sent automatically).
   useEffect(() => {
-    const token = localStorage.getItem(TOKEN_KEY);
-    if (!token) {
-      setUser(false);
-      return;
-    }
     axios
       .get(`${API}/auth/me`)
       .then((res) => setUser(res.data))
-      .catch(() => {
-        localStorage.removeItem(TOKEN_KEY);
-        setUser(false);
-      });
+      .catch(() => setUser(false));
   }, []);
 
   const login = useCallback(async (email, password) => {
     const res = await axios.post(`${API}/auth/login`, { email, password });
-    localStorage.setItem(TOKEN_KEY, res.data.access_token);
     setUser(res.data.user);
     return res.data.user;
   }, []);
 
   const register = useCallback(async (email, password) => {
     const res = await axios.post(`${API}/auth/register`, { email, password });
-    localStorage.setItem(TOKEN_KEY, res.data.access_token);
     setUser(res.data.user);
     return res.data.user;
+  }, []);
+
+  const logout = useCallback(async () => {
+    try {
+      await axios.post(`${API}/auth/logout`);
+    } catch {
+      // Even if the network call fails, drop the client-side user state.
+    }
+    setUser(false);
   }, []);
 
   return (

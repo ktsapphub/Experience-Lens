@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Query, Depends, Request
+from fastapi import FastAPI, APIRouter, HTTPException, Query, Depends, Request, Response
 from fastapi.responses import StreamingResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
@@ -40,6 +40,10 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 JWT_SECRET = os.environ['JWT_SECRET']
 JWT_ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_HOURS = 24 * 7  # 7 days
+ACCESS_COOKIE_NAME = "mdc_access_token"
+COOKIE_MAX_AGE = ACCESS_TOKEN_EXPIRE_HOURS * 3600
+# In production behind HTTPS the cookie should be Secure. Preview/local stays lax.
+COOKIE_SECURE = os.environ.get("COOKIE_SECURE", "true").lower() == "true"
 
 
 def create_access_token(user_id: str, email: str) -> str:
@@ -52,11 +56,32 @@ def create_access_token(user_id: str, email: str) -> str:
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
 
+def set_auth_cookie(response, token: str) -> None:
+    response.set_cookie(
+        key=ACCESS_COOKIE_NAME,
+        value=token,
+        httponly=True,
+        secure=COOKIE_SECURE,
+        samesite="lax",
+        max_age=COOKIE_MAX_AGE,
+        path="/",
+    )
+
+
+def clear_auth_cookie(response) -> None:
+    response.delete_cookie(key=ACCESS_COOKIE_NAME, path="/")
+
+
 async def get_current_user(request: Request) -> dict:
-    auth_header = request.headers.get("Authorization", "")
-    if not auth_header.startswith("Bearer "):
+    # 1) Preferred: httpOnly cookie (resistant to XSS)
+    token = request.cookies.get(ACCESS_COOKIE_NAME)
+    # 2) Fallback: Authorization Bearer (used by tests / API clients)
+    if not token:
+        auth_header = request.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
+            token = auth_header[7:]
+    if not token:
         raise HTTPException(status_code=401, detail="Not authenticated")
-    token = auth_header[7:]
     try:
         payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
     except jwt.ExpiredSignatureError:
@@ -335,13 +360,13 @@ async def root():
 
 # User Authentication Endpoints
 @api_router.post("/auth/register")
-async def register_user(user: UserCreate):
-    """Register a new user and return an access token"""
+async def register_user(user: UserCreate, response: Response):
+    """Register a new user and return an access token (also set as httpOnly cookie)"""
     # Check if user already exists
     existing_user = await db.users.find_one({"email": user.email.lower()})
     if existing_user:
         raise HTTPException(status_code=400, detail="Email already registered")
-    
+
     # Hash password and create user
     hashed_password = pwd_context.hash(user.password)
     user_doc = {
@@ -350,13 +375,14 @@ async def register_user(user: UserCreate):
         "password": hashed_password,
         "created_at": datetime.now(timezone.utc).isoformat()
     }
-    
+
     await db.users.insert_one(user_doc)
-    
+
     token = create_access_token(user_doc["id"], user_doc["email"])
+    set_auth_cookie(response, token)
     return {
         "success": True,
-        "access_token": token,
+        "access_token": token,  # kept for API/test clients; cookie is used by browser
         "token_type": "bearer",
         "user": {
             "id": user_doc["id"],
@@ -367,17 +393,18 @@ async def register_user(user: UserCreate):
 
 
 @api_router.post("/auth/login")
-async def login_user(user: UserLogin):
-    """Login user and return an access token"""
+async def login_user(user: UserLogin, response: Response):
+    """Login user and return an access token (also set as httpOnly cookie)"""
     db_user = await db.users.find_one({"email": user.email.lower()})
-    
+
     if not db_user:
         raise HTTPException(status_code=401, detail="Invalid email or password")
-    
+
     if not pwd_context.verify(user.password, db_user["password"]):
         raise HTTPException(status_code=401, detail="Invalid email or password")
-    
+
     token = create_access_token(db_user["id"], db_user["email"])
+    set_auth_cookie(response, token)
     return {
         "success": True,
         "access_token": token,
@@ -387,6 +414,13 @@ async def login_user(user: UserLogin):
             "email": db_user["email"],
         },
     }
+
+
+@api_router.post("/auth/logout")
+async def logout_user(response: Response):
+    """Clear the auth cookie."""
+    clear_auth_cookie(response)
+    return {"success": True}
 
 
 @api_router.get("/auth/me")
@@ -1169,7 +1203,9 @@ app.include_router(api_router)
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
+    allow_origins=[
+        o.strip() for o in os.environ.get('CORS_ORIGINS', '*').split(',') if o.strip()
+    ] or ["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
