@@ -862,7 +862,7 @@ function SearchPage() {
         region: searchTab === "region" ? region : "",
         location_names: filteredLocationNames,
         page,
-        per_page: 25
+        per_page: 20
       });
 
       if (response.data.success) {
@@ -907,7 +907,7 @@ function SearchPage() {
           region: searchTab === "region" ? region : "",
           location_names: filteredLocationNames,
           page: p,
-          per_page: 25
+          per_page: 20
         });
         if (response.data.success) {
           allResults.push(...response.data.places);
