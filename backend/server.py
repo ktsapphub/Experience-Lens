@@ -1099,8 +1099,16 @@ async def shorten_links(request: ShortenRequest):
 @api_router.get("/shorten-status")
 async def get_shorten_status():
     """Check if short.io is configured and reachable."""
+    def _mask(key: str) -> str:
+        if not key:
+            return ""
+        if len(key) <= 8:
+            return "*" * len(key)
+        return f"{key[:4]}{'*' * (len(key) - 8)}{key[-4:]}"
+
+    masked = _mask(SHORTIO_API_KEY)
     if not SHORTIO_API_KEY or not SHORTIO_DOMAIN:
-        return {"connected": False, "domain": "", "error": "Not configured"}
+        return {"connected": False, "domain": "", "api_key_masked": masked, "error": "Not configured"}
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
             resp = await client.post(
@@ -1109,11 +1117,11 @@ async def get_shorten_status():
                 json={"originalURL": "https://short.io", "domain": SHORTIO_DOMAIN, "allowDuplicates": False},
             )
             if resp.status_code in (200, 201, 409):
-                return {"connected": True, "domain": SHORTIO_DOMAIN, "error": None}
+                return {"connected": True, "domain": SHORTIO_DOMAIN, "api_key_masked": masked, "error": None}
             else:
-                return {"connected": False, "domain": SHORTIO_DOMAIN, "error": f"Status {resp.status_code}"}
+                return {"connected": False, "domain": SHORTIO_DOMAIN, "api_key_masked": masked, "error": f"Status {resp.status_code}"}
     except Exception as e:
-        return {"connected": False, "domain": SHORTIO_DOMAIN, "error": str(e)}
+        return {"connected": False, "domain": SHORTIO_DOMAIN, "api_key_masked": masked, "error": str(e)}
 
 
 

@@ -36,6 +36,8 @@ Build a Google Maps information scraper with category-based and specific locatio
 - [x] **JWT token-based authentication** — `/api/auth/login` + `/api/auth/register` return Bearer tokens; `/api/auth/me` rehydrates session; localStorage key `mdc_access_token` (Feb 2026)
 - [x] **Protected routes (P1)** — `/history`, `/config` wrapped in `<ProtectedRoute>`; redirect to `/login` when no valid token; AuthNav shows email + Logout when signed in (Feb 2026)
 - [x] **Protected backend endpoints (P1)** — `/api/history*`, `/api/search-history`, `PUT /api/config/category`, `POST /api/config/reset` require Bearer token; public search/config-read endpoints remain open (Feb 2026)
+- [x] **Config → Integrations card** — Shows short.io connection status, domain, and masked API key (e.g. `sk_1***********TGpp`); `/api/shorten-status` returns `api_key_masked` (Feb 2026)
+- [x] **Live operation progress + ETA** — `OperationProgress` component renders a progress bar with seconds-remaining indicator under "Shorten Selected" and "Generate Descriptions" while the batch runs (Feb 2026)
 
 ## Prioritized Backlog
 ### P1

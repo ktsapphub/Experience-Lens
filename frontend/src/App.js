@@ -57,6 +57,7 @@ import HistoryPage from "@/pages/HistoryPage";
 import ConfigPage from "@/pages/ConfigPage";
 import LoginPage from "@/pages/LoginPage";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import OperationProgress from "@/components/OperationProgress";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 
 // Helper to get seen locations from localStorage
@@ -629,6 +630,8 @@ function SearchPage() {
   const [generatedDescs, setGeneratedDescs] = useState({}); // { placeId: "description" }
   const [generatingDescId, setGeneratingDescId] = useState(null); // single card generating
   const [generatingAllDescs, setGeneratingAllDescs] = useState(false);
+  const [shortenTotal, setShortenTotal] = useState(0); // total being shortened in active op
+  const [genTotal, setGenTotal] = useState(0); // total being generated in active op
   const [pagination, setPagination] = useState({
     page: 1,
     totalPages: 1,
@@ -673,6 +676,7 @@ function SearchPage() {
     targets.forEach(p => { pendingState[p.id] = { status: 'pending', short_url: null, error: null }; });
     setShortLinks(prev => ({ ...prev, ...pendingState }));
     setShortenLoading(true);
+    setShortenTotal(targets.length);
 
     try {
       const urls = targets.map(p => ({ id: p.id, url: p.website }));
@@ -696,6 +700,7 @@ function SearchPage() {
       toast.error("Failed to shorten links");
     } finally {
       setShortenLoading(false);
+      setShortenTotal(0);
     }
   }, [visiblePlaces, visibleAllPlaces, selectedIds]);
 
@@ -729,6 +734,7 @@ function SearchPage() {
     const missing = scope.filter(p => !p.description && !generatedDescs[p.id]);
     if (missing.length === 0) { toast.info("All locations have descriptions"); return; }
     setGeneratingAllDescs(true);
+    setGenTotal(missing.length);
     try {
       const resp = await axios.post(`${API}/generate-descriptions`, {
         places: missing.map(p => ({ id: p.id, name: p.name, address: p.address, category: p.category }))
@@ -743,6 +749,7 @@ function SearchPage() {
       toast.error("Failed to generate descriptions");
     } finally {
       setGeneratingAllDescs(false);
+      setGenTotal(0);
     }
   }, [visiblePlaces, visibleAllPlaces, selectedIds, generatedDescs]);
 
@@ -1389,37 +1396,45 @@ function SearchPage() {
                 </div>
 
                 {/* Short.io Controls */}
-                <div className="flex items-center gap-2 border-r border-border pr-4">
-                  {shortioConnected && (
-                    <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200" data-testid="shortio-connected">
-                      <Link2 className="w-3 h-3" /> short.io
-                    </span>
-                  )}
-                  {selectedIds.size > 0 ? (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleShortenLinks('selected')}
-                      disabled={shortenLoading}
-                      className="text-xs h-8"
-                      data-testid="shorten-selected-btn"
-                    >
-                      {shortenLoading ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Link2 className="w-3 h-3 mr-1" />}
-                      Shorten Selected ({selectedIds.size})
-                    </Button>
-                  ) : (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleShortenLinks('all')}
-                      disabled={shortenLoading}
-                      className="text-xs h-8"
-                      data-testid="shorten-all-btn"
-                    >
-                      {shortenLoading ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Link2 className="w-3 h-3 mr-1" />}
-                      Shorten All Links
-                    </Button>
-                  )}
+                <div className="flex flex-col gap-1 border-r border-border pr-4 min-w-[180px]">
+                  <div className="flex items-center gap-2">
+                    {shortioConnected && (
+                      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200" data-testid="shortio-connected">
+                        <Link2 className="w-3 h-3" /> short.io
+                      </span>
+                    )}
+                    {selectedIds.size > 0 ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleShortenLinks('selected')}
+                        disabled={shortenLoading}
+                        className="text-xs h-8"
+                        data-testid="shorten-selected-btn"
+                      >
+                        {shortenLoading ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Link2 className="w-3 h-3 mr-1" />}
+                        Shorten Selected ({selectedIds.size})
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleShortenLinks('all')}
+                        disabled={shortenLoading}
+                        className="text-xs h-8"
+                        data-testid="shorten-all-btn"
+                      >
+                        {shortenLoading ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Link2 className="w-3 h-3 mr-1" />}
+                        Shorten All Links
+                      </Button>
+                    )}
+                  </div>
+                  <OperationProgress
+                    active={shortenLoading}
+                    total={shortenTotal}
+                    estPerItemMs={900}
+                    label="Shortening"
+                  />
                 </div>
 
                 {/* Generate Descriptions */}
@@ -1428,21 +1443,32 @@ function SearchPage() {
                   const hasSelection = selectedIds.size > 0;
                   const scope = hasSelection ? pool.filter(p => selectedIds.has(p.id)) : pool;
                   const missingCount = scope.filter(p => !p.description && !generatedDescs[p.id]).length;
-                  return missingCount > 0 ? (
-                    <div className="flex items-center gap-2 border-r border-border pr-4">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleGenerateAllDescs}
-                        disabled={generatingAllDescs}
-                        className="text-xs h-8"
-                        data-testid="generate-all-desc-btn"
-                      >
-                        {generatingAllDescs ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Sparkles className="w-3 h-3 mr-1" />}
-                        Generate {missingCount} {hasSelection ? 'Selected ' : ''}Descriptions
-                      </Button>
+                  if (!generatingAllDescs && missingCount === 0) return null;
+                  return (
+                    <div className="flex flex-col gap-1 border-r border-border pr-4 min-w-[180px]">
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleGenerateAllDescs}
+                          disabled={generatingAllDescs || missingCount === 0}
+                          className="text-xs h-8"
+                          data-testid="generate-all-desc-btn"
+                        >
+                          {generatingAllDescs ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Sparkles className="w-3 h-3 mr-1" />}
+                          {generatingAllDescs
+                            ? `Generating ${genTotal}...`
+                            : `Generate ${missingCount} ${hasSelection ? 'Selected ' : ''}Descriptions`}
+                        </Button>
+                      </div>
+                      <OperationProgress
+                        active={generatingAllDescs}
+                        total={genTotal}
+                        estPerItemMs={1800}
+                        label="Generating"
+                      />
                     </div>
-                  ) : null;
+                  );
                 })()}
                 
                 <span className="text-sm text-muted-foreground">

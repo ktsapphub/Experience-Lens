@@ -24,7 +24,9 @@ import {
   Music,
   UtensilsCrossed,
   Info,
-  CheckCircle
+  CheckCircle,
+  Link2,
+  XCircle
 } from "lucide-react";
 import Header from "@/components/Header";
 
@@ -176,6 +178,7 @@ export default function ConfigPage() {
   const [config, setConfig] = useState(null);
   const [loading, setLoading] = useState(true);
   const [resetting, setResetting] = useState(false);
+  const [shortio, setShortio] = useState(null);
 
   const fetchConfig = async () => {
     setLoading(true);
@@ -190,8 +193,18 @@ export default function ConfigPage() {
     }
   };
 
+  const fetchShortioStatus = async () => {
+    try {
+      const res = await axios.get(`${API}/shorten-status`);
+      setShortio(res.data);
+    } catch {
+      setShortio({ connected: false, error: "Unreachable" });
+    }
+  };
+
   useEffect(() => {
     fetchConfig();
+    fetchShortioStatus();
   }, []);
 
   const handleUpdateCategory = async (categoryId, placeTypes, keywords) => {
@@ -296,6 +309,60 @@ export default function ConfigPage() {
                   <div className="p-4 bg-secondary/30 rounded-lg">
                     <p className="text-sm text-muted-foreground mb-1">Build Date</p>
                     <p className="text-lg font-medium">{config?.build_date}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Integrations */}
+            <Card data-testid="integrations-card">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Link2 className="w-5 h-5" />
+                  Integrations
+                </CardTitle>
+                <CardDescription>External services connected to your account</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-start gap-3 p-4 border rounded-lg" data-testid="shortio-integration-row">
+                  <div className={`mt-0.5 ${shortio?.connected ? "text-emerald-500" : "text-red-500"}`}>
+                    {shortio?.connected ? <CheckCircle className="w-5 h-5" /> : <XCircle className="w-5 h-5" />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-medium">short.io</p>
+                      <Badge
+                        variant="outline"
+                        className={
+                          shortio?.connected
+                            ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                            : "border-red-200 bg-red-50 text-red-700"
+                        }
+                        data-testid="shortio-status-badge"
+                      >
+                        {shortio?.connected ? "Connected" : "Disconnected"}
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Bulk URL shortening for website links in search results & CSV exports.
+                    </p>
+                    <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className="text-muted-foreground w-24">Domain:</span>
+                        <span className="font-mono">{shortio?.domain || "—"}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-muted-foreground w-24">API Key:</span>
+                        <span className="font-mono" data-testid="shortio-api-key-masked">
+                          {shortio?.api_key_masked || "—"}
+                        </span>
+                      </div>
+                    </div>
+                    {!shortio?.connected && shortio?.error && (
+                      <p className="text-xs text-red-600 mt-2" data-testid="shortio-error">
+                        {shortio.error}
+                      </p>
+                    )}
                   </div>
                 </div>
               </CardContent>
