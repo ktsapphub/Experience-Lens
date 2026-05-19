@@ -38,6 +38,7 @@ Build a Google Maps information scraper with category-based and specific locatio
 - [x] **CORS hardened** — explicit allowed origins from env, no more wildcard with credentials (Feb 2026)
 - [x] **Protected routes (P1)** — `/history`, `/config` wrapped in `<ProtectedRoute>`; redirect to `/login` when no valid token; AuthNav shows email + Logout when signed in (Feb 2026)
 - [x] **Protected backend endpoints (P1)** — `/api/history*`, `/api/search-history`, `PUT /api/config/category`, `POST /api/config/reset` require Bearer token; public search/config-read endpoints remain open (Feb 2026)
+- [x] **Client-side pagination cache** — initial search fetches all results once (per_page=999); pagination buttons just slice the cached array, eliminating duplicate Google Places API calls when navigating between pages (Feb 2026)
 - [x] **Config → Integrations card** — Shows short.io connection status, domain, and masked API key (e.g. `sk_1***********TGpp`); `/api/shorten-status` returns `api_key_masked` (Feb 2026)
 - [x] **Live operation progress + ETA** — `OperationProgress` component renders a progress bar with seconds-remaining indicator under "Shorten Selected" and "Generate Descriptions" while the batch runs (Feb 2026)
 

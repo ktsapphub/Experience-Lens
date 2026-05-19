@@ -861,6 +861,8 @@ function SearchPage() {
     setLocationNames(newNames);
   };
 
+  const PER_PAGE = 20;
+
   const handleSearch = useCallback(async (page = 1) => {
     // Category is required for location/region search, optional for specific places
     if (categories.length === 0 && searchTab !== "specific") {
@@ -888,75 +890,57 @@ function SearchPage() {
             .map(loc => loc.state ? `${loc.name.trim()}, ${loc.state}` : loc.name.trim())
         : [];
       
+      // Single backend hit: ask for ALL results in one shot, then paginate client-side.
+      // Backend caps results at ~60 per search, so per_page=999 simply returns everything.
       const response = await axios.post(`${API}/places/search`, {
         categories,
         location: searchTab === "location" ? location.trim() : "",
         region: searchTab === "region" ? region : "",
         location_names: filteredLocationNames,
-        page,
-        per_page: 20
+        page: 1,
+        per_page: 999
       });
 
       if (response.data.success) {
-        setPlaces(response.data.places);
-        setPagination({
-          page: response.data.page,
-          totalPages: response.data.total_pages,
-          total: response.data.total
-        });
-        
-        // Reset removals on new search
-        if (page === 1) {
-          setRemovedIds(new Set());
-          fetchAllPagesForExport(response.data.total_pages, filteredLocationNames);
-        }
+        const all = response.data.places || [];
+        const total = all.length;
+        const totalPages = Math.max(1, Math.ceil(total / PER_PAGE));
+        const safePage = Math.min(Math.max(page, 1), totalPages);
+        const pageSlice = all.slice((safePage - 1) * PER_PAGE, safePage * PER_PAGE);
+
+        setAllPlaces(all);
+        setPlaces(pageSlice);
+        setPagination({ page: safePage, totalPages, total });
+        setRemovedIds(new Set());
         
         // Mark current page locations as seen after 3 seconds
         setTimeout(() => {
-          const placeIds = response.data.places.map(p => p.id);
-          markAsSeen(placeIds);
+          markAsSeen(pageSlice.map(p => p.id));
         }, 3000);
         
-        toast.success(`Found ${response.data.total} locations`);
+        toast.success(`Found ${total} locations`);
       }
     } catch (error) {
       console.error("Search error:", error);
       const message = error.response?.data?.detail || "Failed to search locations";
       toast.error(message);
       setPlaces([]);
+      setAllPlaces([]);
     } finally {
       setLoading(false);
     }
-  }, [categories, location, region, locationNames, searchTab]);
+  }, [categories, location, region, locationNames, searchTab, markAsSeen]);
 
-  const fetchAllPagesForExport = async (totalPages, filteredLocationNames) => {
-    try {
-      const allResults = [];
-      for (let p = 1; p <= totalPages; p++) {
-        const response = await axios.post(`${API}/places/search`, {
-          categories,
-          location: searchTab === "location" ? location.trim() : "",
-          region: searchTab === "region" ? region : "",
-          location_names: filteredLocationNames,
-          page: p,
-          per_page: 20
-        });
-        if (response.data.success) {
-          allResults.push(...response.data.places);
-        }
-      }
-      setAllPlaces(allResults);
-    } catch (error) {
-      console.error("Error fetching all pages:", error);
-      setAllPlaces(places);
-    }
-  };
-
+  // Client-side pagination — no backend call, results are cached from the initial search.
   const handlePageChange = (newPage) => {
-    if (newPage >= 1 && newPage <= pagination.totalPages) {
-      handleSearch(newPage);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
+    if (newPage < 1 || newPage > pagination.totalPages || newPage === pagination.page) return;
+    const pageSlice = allPlaces.slice((newPage - 1) * PER_PAGE, newPage * PER_PAGE);
+    setPlaces(pageSlice);
+    setPagination(prev => ({ ...prev, page: newPage }));
+    setTimeout(() => {
+      markAsSeen(pageSlice.map(p => p.id));
+    }, 1500);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleExportCSV = useCallback(async (exportType = 'all') => {
