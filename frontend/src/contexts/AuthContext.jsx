@@ -37,8 +37,10 @@ export function AuthProvider({ children }) {
   const logout = useCallback(async () => {
     try {
       await axios.post(`${API}/auth/logout`);
-    } catch {
-      // Even if the network call fails, drop the client-side user state.
+    } catch (err) {
+      // Network may fail (offline, server down) — we still want to drop the
+      // client-side user state so the UI reflects the logout immediately.
+      console.warn("Logout request failed; clearing client state anyway:", err?.message || err);
     }
     setUser(false);
   }, []);

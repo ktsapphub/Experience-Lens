@@ -1,5 +1,6 @@
 """Backend tests for JWT auth + protected/public routes (MapData Collector)."""
 import os
+import secrets
 import uuid
 import pytest
 import requests
@@ -59,7 +60,8 @@ class TestLogin:
 class TestRegister:
     def test_register_new_user_and_login(self, session):
         email = f"TEST_{uuid.uuid4().hex[:10]}@example.com"
-        password = "TestPass#1234"
+        # Use a cryptographically random password so static scanners don't flag a hardcoded secret.
+        password = f"T#{secrets.token_urlsafe(16)}"
         r = session.post(f"{API}/auth/register", json={"email": email, "password": password})
         assert r.status_code == 200, r.text
         d = r.json()
@@ -153,7 +155,7 @@ class TestPublicRoutes:
     def test_post_places_search_public_validation(self):
         # 400 (validation) is fine — means auth is NOT blocking the request
         r = requests.post(f"{API}/places/search", json={"category": "foodie"})
-        assert r.status_code != 401, f"places/search should be public, got 401"
+        assert r.status_code != 401, "places/search should be public, got 401"
 
     def test_post_shorten_links_public(self):
         r = requests.post(f"{API}/shorten-links", json={"urls": []})

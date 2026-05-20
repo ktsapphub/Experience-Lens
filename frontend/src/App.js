@@ -74,8 +74,9 @@ const getSeenLocations = () => {
 const saveSeenLocations = (ids) => {
   try {
     localStorage.setItem('seenLocations', JSON.stringify([...ids]));
-  } catch {
-    // Ignore localStorage errors
+  } catch (err) {
+    // localStorage can fail when full or in some private-browsing modes — non-fatal.
+    console.warn('Failed to persist seenLocations to localStorage:', err?.message || err);
   }
 };
 
@@ -1489,9 +1490,23 @@ function SearchPage() {
         )}
 
         <div className="max-w-7xl mx-auto">
-          {loading ? (
-            <SearchProgress />
-          ) : visiblePlaces.length > 0 ? (
+          {/* Render branch: loading → progress, empty + searched → "no results", empty → CTA, otherwise → grid */}
+          {loading && <SearchProgress />}
+          {!loading && visiblePlaces.length === 0 && searched && (
+            <div className="empty-state py-32">
+              <div className="w-20 h-20 bg-secondary rounded-full flex items-center justify-center mb-6">
+                <MapPin className="w-10 h-10 text-muted-foreground" />
+              </div>
+              <h3 className="text-xl font-medium mb-2" style={{ fontFamily: 'IBM Plex Sans, sans-serif' }}>
+                No locations found
+              </h3>
+              <p className="text-muted-foreground max-w-md">
+                No locations with complete data found. Try a different search.
+              </p>
+            </div>
+          )}
+          {!loading && visiblePlaces.length === 0 && !searched && <EmptyState />}
+          {!loading && visiblePlaces.length > 0 && (
             <>
               <div className="results-grid border-t border-l border-border" data-testid="results-grid">
                 {visiblePlaces.map((place, index) => (
@@ -1521,20 +1536,6 @@ function SearchPage() {
                 />
               )}
             </>
-          ) : searched ? (
-            <div className="empty-state py-32">
-              <div className="w-20 h-20 bg-secondary rounded-full flex items-center justify-center mb-6">
-                <MapPin className="w-10 h-10 text-muted-foreground" />
-              </div>
-              <h3 className="text-xl font-medium mb-2" style={{ fontFamily: 'IBM Plex Sans, sans-serif' }}>
-                No locations found
-              </h3>
-              <p className="text-muted-foreground max-w-md">
-                No locations with complete data found. Try a different search.
-              </p>
-            </div>
-          ) : (
-            <EmptyState />
           )}
         </div>
       </main>
