@@ -1211,6 +1211,45 @@ app.add_middleware(
 )
 
 
+@app.on_event("startup")
+async def seed_admin_user():
+    """Ensure the configured admin account exists and has the current password.
+
+    Idempotent: creates the user if missing, or rehashes the password if the env
+    value changed. Never logs the plaintext password.
+    """
+    admin_email = os.environ.get("ADMIN_EMAIL", "").strip().lower()
+    admin_password = os.environ.get("ADMIN_PASSWORD", "")
+    if not admin_email or not admin_password:
+        logger.info("Admin seeding skipped: ADMIN_EMAIL / ADMIN_PASSWORD not set")
+        return
+    try:
+        existing = await db.users.find_one({"email": admin_email})
+        if existing is None:
+            await db.users.insert_one({
+                "id": str(uuid.uuid4()),
+                "email": admin_email,
+                "password": pwd_context.hash(admin_password),
+                "role": "admin",
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            })
+            logger.info(f"Seeded admin user {admin_email}")
+        elif not pwd_context.verify(admin_password, existing["password"]):
+            await db.users.update_one(
+                {"email": admin_email},
+                {"$set": {"password": pwd_context.hash(admin_password), "role": "admin"}},
+            )
+            logger.info(f"Updated admin password for {admin_email}")
+        elif existing.get("role") != "admin":
+            await db.users.update_one(
+                {"email": admin_email},
+                {"$set": {"role": "admin"}},
+            )
+            logger.info(f"Promoted {admin_email} to admin role")
+    except Exception as e:
+        logger.error(f"Admin seeding failed: {e}")
+
+
 @app.on_event("shutdown")
 async def shutdown_db_client():
     client.close()

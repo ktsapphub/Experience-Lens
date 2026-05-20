@@ -1,6 +1,12 @@
 # Test Credentials
 
-## App user (existing, used for protected route testing)
+## Admin account (auto-seeded on backend startup)
+- Email: `mydatejar@gmail.com`
+- Password: `#Test1234`
+- Role: `admin`
+- Source: `ADMIN_EMAIL` / `ADMIN_PASSWORD` in `/app/backend/.env`. On every backend startup the `seed_admin_user` hook creates this user if missing, or rehashes the password if it changed.
+
+## Legacy app user (still active)
 - Email: `joseph@centurion-pm.com`
 - Password: `#Test1234`
 
