@@ -353,6 +353,77 @@ async def enrich_places_with_instagram(places: list, http_client: httpx.AsyncCli
     return places
 
 
+# ---- Google Place Photo URL resolution ----
+# The /v1/{photo_name}/media endpoint serves a 302 redirect to a lh3.googleusercontent.com URL.
+# For CSV exports we resolve to the final googleusercontent URL so:
+#   1) the API key is NOT leaked in the exported file
+#   2) the URL renders directly in any context (Sheets, browsers, email previewers)
+# Google supports `?skipHttpRedirect=true` which returns JSON `{ "photoUri": "https://lh3.googleusercontent.com/..." }`.
+
+_PLACE_PHOTO_NAME_RE = re.compile(r"places/[^/]+/photos/[^/?#]+")
+
+
+def _extract_photo_name(url: str) -> Optional[str]:
+    """Return the `places/{id}/photos/{name}` resource path embedded in a Photo API URL."""
+    if not url:
+        return None
+    match = _PLACE_PHOTO_NAME_RE.search(url)
+    return match.group(0) if match else None
+
+
+async def resolve_place_photo_url(
+    http_client: httpx.AsyncClient,
+    photo_url: str,
+    max_width: int = 600,
+    max_height: int = 400,
+) -> str:
+    """Resolve a Google Places photo URL to its underlying googleusercontent.com URL.
+
+    Falls back to the input URL on any failure so the caller still has *something* renderable.
+    Non-Google URLs are returned unchanged.
+    """
+    if not photo_url or "places.googleapis.com" not in photo_url:
+        return photo_url
+    if not GOOGLE_PLACES_API_KEY:
+        return photo_url
+
+    photo_name = _extract_photo_name(photo_url)
+    if not photo_name:
+        return photo_url
+
+    try:
+        response = await http_client.get(
+            f"https://places.googleapis.com/v1/{photo_name}/media",
+            params={
+                "maxWidthPx": max_width,
+                "maxHeightPx": max_height,
+                "skipHttpRedirect": "true",
+                "key": GOOGLE_PLACES_API_KEY,
+            },
+            timeout=5.0,
+        )
+        if response.status_code == 200:
+            data = response.json()
+            resolved = data.get("photoUri")
+            if resolved:
+                return resolved
+    except Exception as e:
+        logger.warning(f"Photo resolution failed for {photo_name}: {e}")
+    return photo_url
+
+
+async def resolve_photo_urls_bulk(urls: List[str]) -> List[str]:
+    """Resolve up to N photo URLs concurrently. Preserves order."""
+    if not urls:
+        return urls
+    semaphore = asyncio.Semaphore(10)
+    async with httpx.AsyncClient() as client:
+        async def bounded(u: str) -> str:
+            async with semaphore:
+                return await resolve_place_photo_url(client, u)
+        return await asyncio.gather(*(bounded(u) for u in urls))
+
+
 @api_router.get("/")
 async def root():
     return {"message": "Google Maps Location Scraper API"}
@@ -657,6 +728,12 @@ async def search_places(request: SearchRequest):
         
         # Build category search list — if no categories, use one pass with empty keywords
         category_list = categories if categories else [""]
+
+        # Scale the result cap with the number of categories so each one gets a fair
+        # share of the budget (single category: 60, two: 120, three: 180, …).
+        # Without this, a category processed later in the loop gets ~0 results once
+        # the global cap is hit by earlier categories.
+        max_total_results = max(60, 60 * len(category_list))
         
         headers = {
             "X-Goog-Api-Key": GOOGLE_PLACES_API_KEY,
@@ -670,7 +747,7 @@ async def search_places(request: SearchRequest):
             
             # Search across all provided locations
             for search_location in search_locations:
-                if len(all_places) >= 60:  # Cap total results
+                if len(all_places) >= max_total_results:  # Cap total results
                     break
                 
                 # Use Text Search API (New) for better results
@@ -758,7 +835,7 @@ async def search_places(request: SearchRequest):
             place_types = CATEGORY_TYPES.get(current_category, []) if current_category else []
             
             for place_type in place_types[:2]:
-                if len(all_places) >= 60:  # Cap at 60 total results
+                if len(all_places) >= max_total_results:  # Cap at scaled total
                     break
                 
                 # Use first search location for additional searches
@@ -836,6 +913,24 @@ async def search_places(request: SearchRequest):
         # Enrich places with Instagram handles from their websites
         async with httpx.AsyncClient(timeout=10.0) as ig_client:
             all_places = await enrich_places_with_instagram(all_places, ig_client)
+
+        # Interleave results by category so Page 1 contains a balanced mix when
+        # multiple categories are selected (round-robin by category).
+        # When only one category is selected this is a no-op.
+        if len(categories) > 1:
+            buckets: dict = {c: [] for c in categories}
+            others: list = []
+            for p in all_places:
+                if p.category in buckets:
+                    buckets[p.category].append(p)
+                else:
+                    others.append(p)
+            interleaved = []
+            while any(buckets[c] for c in categories):
+                for c in categories:
+                    if buckets[c]:
+                        interleaved.append(buckets[c].pop(0))
+            all_places = interleaved + others
 
         # Store search in history with results
         # Determine search method
@@ -931,7 +1026,26 @@ async def export_places_to_csv(places: List[PlaceResult]):
     
     output = io.StringIO()
     writer = csv.writer(output)
-    
+
+    # Resolve any /v1/{photo_name}/media URLs to their canonical lh3.googleusercontent.com
+    # form so the CSV: (a) doesn't leak the API key, (b) renders in any tool that opens it.
+    photo_index = []  # (place_idx, photo_idx, original_url)
+    photos_to_resolve: List[str] = []
+    for p_idx, place in enumerate(places):
+        for ph_idx, photo in enumerate(place.photos or []):
+            if photo.url and "places.googleapis.com" in photo.url:
+                photo_index.append((p_idx, ph_idx, photo.url))
+                photos_to_resolve.append(photo.url)
+
+    resolved_map: dict = {}
+    if photos_to_resolve:
+        try:
+            resolved = await resolve_photo_urls_bulk(photos_to_resolve)
+            for (_, _, orig), final in zip(photo_index, resolved):
+                resolved_map[orig] = final
+        except Exception as e:
+            logger.warning(f"Bulk photo resolution failed: {e}")
+
     # Write header
     writer.writerow([
         "Experience Type",
@@ -954,6 +1068,8 @@ async def export_places_to_csv(places: List[PlaceResult]):
     # Write data
     for place in places:
         photos = place.photos if place.photos else []
+        # Substitute each photo URL with its resolved CDN URL if we have one.
+        photo_urls = [resolved_map.get(p.url, p.url) for p in photos]
         # Get experience type display name, default to empty if not found
         experience_type = EXPERIENCE_TYPE_NAMES.get(place.category, place.category or "")
         # Extract Instagram handle only (no @ or full URL)
@@ -982,9 +1098,9 @@ async def export_places_to_csv(places: List[PlaceResult]):
             category_color,
             place.rating or "",
             place.price_range or "",
-            photos[0].url if len(photos) > 0 else "",
-            photos[1].url if len(photos) > 1 else "",
-            photos[2].url if len(photos) > 2 else ""
+            photo_urls[0] if len(photo_urls) > 0 else "",
+            photo_urls[1] if len(photo_urls) > 1 else "",
+            photo_urls[2] if len(photo_urls) > 2 else "",
         ])
     
     output.seek(0)
