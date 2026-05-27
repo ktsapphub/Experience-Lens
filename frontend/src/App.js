@@ -616,7 +616,7 @@ function SearchPage() {
   const [searchTab, setSearchTab] = useState("location");
   const [location, setLocation] = useState("");
   const [region, setRegion] = useState("");
-  const [locationNames, setLocationNames] = useState([{ id: `ln-${Date.now()}`, name: "", state: "" }]);
+  const [locationNames, setLocationNames] = useState([{ id: `ln-${Date.now()}`, name: "", city: "", state: "" }]);
   const [places, setPlaces] = useState([]);
   const [allPlaces, setAllPlaces] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -842,13 +842,13 @@ function SearchPage() {
 
   const addLocationName = () => {
     if (locationNames.length < 10) {
-      setLocationNames([...locationNames, { id: `ln-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, name: "", state: "" }]);
+      setLocationNames([...locationNames, { id: `ln-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, name: "", city: "", state: "" }]);
     }
   };
 
   const removeLocationName = (index) => {
     const newNames = locationNames.filter((_, i) => i !== index);
-    setLocationNames(newNames.length > 0 ? newNames : [{ id: `ln-${Date.now()}`, name: "", state: "" }]);
+    setLocationNames(newNames.length > 0 ? newNames : [{ id: `ln-${Date.now()}`, name: "", city: "", state: "" }]);
   };
 
   const updateLocationName = (index, field, value) => {
@@ -856,8 +856,8 @@ function SearchPage() {
     if (field === 'state') {
       // Only allow 2 letter uppercase state codes
       newNames[index] = { ...newNames[index], state: value.toUpperCase().slice(0, 2) };
-    } else {
-      newNames[index] = { ...newNames[index], name: value };
+    } else if (field === 'name' || field === 'city') {
+      newNames[index] = { ...newNames[index], [field]: value };
     }
     setLocationNames(newNames);
   };
@@ -873,7 +873,7 @@ function SearchPage() {
     
     const hasLocation = location.trim() && searchTab === "location";
     const hasRegion = region && searchTab === "region";
-    const hasLocationNames = locationNames.some(loc => loc.name.trim()) && searchTab === "specific";
+    const hasLocationNames = locationNames.some(loc => (loc.name?.trim() || loc.city?.trim() || loc.state?.trim())) && searchTab === "specific";
     
     if (!hasLocation && !hasRegion && !hasLocationNames) {
       toast.error("Please provide a search location");
@@ -884,11 +884,21 @@ function SearchPage() {
     setSearched(true);
 
     try {
-      // Format location names with state abbreviations
-      const filteredLocationNames = searchTab === "specific" 
+      // Compose each search query from the optional name / city / state fields.
+      // Acceptable shapes:
+      //   "Bottega Louie, Los Angeles, CA"   (all three)
+      //   "Bottega Louie, CA"                (no city)
+      //   "Bottega Louie, Los Angeles"       (no state)
+      //   "Bottega Louie"                    (name only)
+      //   "Los Angeles, CA"                  (no name — pure geography)
+      //   "CA"                               (state only)
+      const filteredLocationNames = searchTab === "specific"
         ? locationNames
-            .filter(loc => loc.name.trim())
-            .map(loc => loc.state ? `${loc.name.trim()}, ${loc.state}` : loc.name.trim())
+            .map(loc => {
+              const parts = [loc.name?.trim(), loc.city?.trim(), loc.state?.trim()].filter(Boolean);
+              return parts.join(", ");
+            })
+            .filter(q => q.length > 0)
         : [];
       
       // Single backend hit: ask for ALL results in one shot, then paginate client-side.
@@ -1253,16 +1263,27 @@ function SearchPage() {
                   
                   <div className="space-y-2">
                     {locationNames.map((loc, index) => (
-                      <div key={loc.id} className="flex gap-2">
-                        <div className="relative flex-1">
+                      <div key={loc.id} className="flex flex-col sm:flex-row gap-2">
+                        <div className="relative flex-1 min-w-0">
                           <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                           <Input
                             type="text"
-                            placeholder={`Location ${index + 1} (e.g., Central Park)`}
+                            placeholder={`Location ${index + 1} name (e.g., Central Park)`}
                             value={loc.name}
                             onChange={(e) => updateLocationName(index, 'name', e.target.value)}
                             className="h-11 pl-10 text-sm border focus:border-primary"
                             data-testid={`location-name-input-${index}`}
+                          />
+                        </div>
+                        <div className="relative w-full sm:w-48 shrink-0">
+                          <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                          <Input
+                            type="text"
+                            placeholder="City (optional)"
+                            value={loc.city}
+                            onChange={(e) => updateLocationName(index, 'city', e.target.value)}
+                            className="h-11 pl-10 text-sm border focus:border-primary"
+                            data-testid={`location-city-input-${index}`}
                           />
                         </div>
                         <Input
@@ -1270,7 +1291,7 @@ function SearchPage() {
                           placeholder="ST"
                           value={loc.state}
                           onChange={(e) => updateLocationName(index, 'state', e.target.value)}
-                          className="h-11 w-16 text-center text-sm font-medium border focus:border-primary uppercase"
+                          className="h-11 w-full sm:w-16 text-center text-sm font-medium border focus:border-primary uppercase"
                           maxLength={2}
                           data-testid={`location-state-input-${index}`}
                         />
@@ -1279,7 +1300,7 @@ function SearchPage() {
                             variant="ghost"
                             size="icon"
                             onClick={() => removeLocationName(index)}
-                            className="h-11 w-11 text-muted-foreground hover:text-destructive"
+                            className="h-11 w-11 shrink-0 text-muted-foreground hover:text-destructive"
                             data-testid={`remove-location-name-${index}`}
                           >
                             <X className="w-4 h-4" />
@@ -1288,7 +1309,7 @@ function SearchPage() {
                       </div>
                     ))}
                     <p className="text-xs text-muted-foreground mt-2">
-                      Add 2-letter state code (e.g., NY, CA) to search same location name in different states
+                      Name, City, and State are each optional — provide any combination to refine results (e.g., a place name alone, or a city + state to scan a whole area).
                     </p>
                   </div>
                 </TabsContent>
