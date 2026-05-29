@@ -191,9 +191,11 @@ const CATEGORY_IMAGES = {
 };
 
 // Location Card Component
-function LocationCard({ place, index, isSelected, onSelect, isNew, onRemove, onImageError, shortLinkStatus, generatedDesc, onGenerateDesc, isGenerating }) {
+function LocationCard({ place, index, isSelected, onSelect, isNew, onRemove, onImageError, shortLinkStatus, generatedDesc, onGenerateDesc, isGenerating, assignedCategory, onAssignCategory }) {
   const [imageError, setImageError] = useState({});
-  const category = CATEGORIES.find(c => c.id === place.category);
+  // The card prefers a user-assigned category over the one returned by the backend.
+  const effectiveCategoryId = assignedCategory || place.category;
+  const category = CATEGORIES.find(c => c.id === effectiveCategoryId);
   const CategoryIcon = category?.icon || MapPin;
   
   const mainImage = place.photos?.[0]?.url || CATEGORY_IMAGES[place.category];
@@ -338,7 +340,36 @@ function LocationCard({ place, index, isSelected, onSelect, isNew, onRemove, onI
             >
               <CategoryIcon className="w-3 h-3" />
               {category?.name || place.category}
+              {assignedCategory && <span className="text-[9px] opacity-80 ml-0.5">(manual)</span>}
             </span>
+          )}
+          {/* Manual category picker — only shown for results that came from a Specific Places
+              search (no backend category) and only when the parent passes a setter. */}
+          {onAssignCategory && (
+            <div className="flex flex-wrap items-center gap-1.5 pt-1" data-testid={`category-picker-${index}`}>
+              <span className="text-[10px] text-muted-foreground uppercase tracking-wide mr-1">
+                {effectiveCategoryId ? "Change:" : "Assign category:"}
+              </span>
+              {CATEGORIES.map((cat) => {
+                const IconCmp = cat.icon;
+                const active = effectiveCategoryId === cat.id;
+                return (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => onAssignCategory(place.id, active ? "" : cat.id)}
+                    title={cat.name}
+                    aria-label={`Assign ${cat.name}`}
+                    aria-pressed={active}
+                    className={`inline-flex items-center justify-center w-6 h-6 rounded-md text-white transition-transform ${active ? 'ring-2 ring-offset-1 ring-foreground scale-110' : 'opacity-70 hover:opacity-100 hover:scale-105'}`}
+                    style={{ backgroundColor: cat.hex }}
+                    data-testid={`assign-category-${cat.id}-${index}`}
+                  >
+                    <IconCmp className="w-3 h-3" />
+                  </button>
+                );
+              })}
+            </div>
           )}
         </div>
 
@@ -629,6 +660,7 @@ function SearchPage() {
   const [shortenLoading, setShortenLoading] = useState(false);
   const [shortioConnected, setShortioConnected] = useState(null); // null=unchecked, true/false
   const [generatedDescs, setGeneratedDescs] = useState({}); // { placeId: "description" }
+  const [manualCategories, setManualCategories] = useState({}); // { placeId: "foodie" } — only for Specific Places
   const [generatingDescId, setGeneratingDescId] = useState(null); // single card generating
   const [generatingAllDescs, setGeneratingAllDescs] = useState(false);
   const [shortenTotal, setShortenTotal] = useState(0); // total being shortened in active op
@@ -882,6 +914,8 @@ function SearchPage() {
 
     setLoading(true);
     setSearched(true);
+    // Drop any prior manual category assignments — they are search-scoped.
+    setManualCategories({});
 
     try {
       // Compose each search query from the optional name / city / state fields.
@@ -954,6 +988,20 @@ function SearchPage() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  // Manually assign / clear a category for one location (Specific Places flow).
+  // Passing categoryId="" clears the assignment.
+  const handleAssignCategory = useCallback((placeId, categoryId) => {
+    setManualCategories(prev => {
+      const next = { ...prev };
+      if (!categoryId) {
+        delete next[placeId];
+      } else {
+        next[placeId] = categoryId;
+      }
+      return next;
+    });
+  }, []);
+
   const handleExportCSV = useCallback(async (exportType = 'all') => {
     let dataToExport;
     
@@ -984,11 +1032,15 @@ function SearchPage() {
       const website = (sl && sl.status === 'success' && sl.short_url) ? sl.short_url : place.website;
       // Use generated description if original is missing
       const description = place.description || generatedDescs[place.id] || "";
+      // Apply any manual category assignment from the UI (Specific Places flow).
+      // The backend uses `category` to look up both display name and hex color.
+      const category = manualCategories[place.id] || place.category || "";
       return {
         ...place,
         photos: validPhotos,
         website,
         description,
+        category,
       };
     });
 
@@ -1010,7 +1062,7 @@ function SearchPage() {
       console.error("Export error:", error);
       toast.error("Failed to export CSV");
     }
-  }, [visiblePlaces, visibleAllPlaces, categories, location, region, selectedIds, failedImages, shortLinks, generatedDescs]);
+  }, [visiblePlaces, visibleAllPlaces, categories, location, region, selectedIds, failedImages, shortLinks, generatedDescs, manualCategories]);
 
   const handleKeyPress = (e) => {
     if (e.key === 'Enter') {
@@ -1544,6 +1596,8 @@ function SearchPage() {
                     generatedDesc={generatedDescs[place.id]}
                     onGenerateDesc={handleGenerateDesc}
                     isGenerating={generatingDescId === place.id || generatingAllDescs}
+                    assignedCategory={manualCategories[place.id]}
+                    onAssignCategory={searchTab === "specific" ? handleAssignCategory : undefined}
                   />
                 ))}
               </div>
