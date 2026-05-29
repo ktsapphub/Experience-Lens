@@ -1053,7 +1053,7 @@ async def export_places_to_csv(places: List[PlaceResult]):
         "Address",
         "Latitude",
         "Longitude",
-        "Website",
+        "Website URL",
         "Phone",
         "Instagram",
         "Description",
@@ -1062,7 +1062,9 @@ async def export_places_to_csv(places: List[PlaceResult]):
         "Price Range",
         "Image 1",
         "Image 2",
-        "Image 3"
+        "Image 3",
+        "Is Staff Pick",
+        "Is Staff Pick",
     ])
     
     # Write data
@@ -1101,6 +1103,8 @@ async def export_places_to_csv(places: List[PlaceResult]):
             photo_urls[0] if len(photo_urls) > 0 else "",
             photo_urls[1] if len(photo_urls) > 1 else "",
             photo_urls[2] if len(photo_urls) > 2 else "",
+            0,  # Is Staff Pick (default)
+            0,  # Is Staff Pick (default)
         ])
     
     output.seek(0)
