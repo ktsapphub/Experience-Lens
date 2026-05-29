@@ -1048,7 +1048,7 @@ async def export_places_to_csv(places: List[PlaceResult]):
 
     # Write header
     writer.writerow([
-        "Experience Type",
+        "Category",
         "Name",
         "Address",
         "Latitude",
@@ -1063,7 +1063,6 @@ async def export_places_to_csv(places: List[PlaceResult]):
         "Image 1",
         "Image 2",
         "Image 3",
-        "Is Staff Pick",
         "Is Staff Pick",
     ])
     
@@ -1103,7 +1102,6 @@ async def export_places_to_csv(places: List[PlaceResult]):
             photo_urls[0] if len(photo_urls) > 0 else "",
             photo_urls[1] if len(photo_urls) > 1 else "",
             photo_urls[2] if len(photo_urls) > 2 else "",
-            0,  # Is Staff Pick (default)
             0,  # Is Staff Pick (default)
         ])
     
