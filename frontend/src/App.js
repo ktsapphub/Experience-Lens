@@ -874,7 +874,7 @@ function SearchPage() {
   }, []);
 
   const addLocationName = () => {
-    if (locationNames.length < 10) {
+    if (locationNames.length < 20) {
       setLocationNames([...locationNames, { id: `ln-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, name: "", city: "", state: "" }]);
     }
   };
@@ -1332,8 +1332,8 @@ function SearchPage() {
 
                 <TabsContent value="specific" className="mt-0 space-y-4">
                   <div className="flex items-center justify-between mb-2">
-                    <p className="text-sm text-muted-foreground">Add specific locations to search (up to 10)</p>
-                    {locationNames.length < 10 && (
+                    <p className="text-sm text-muted-foreground">Add specific locations to search (up to 20)</p>
+                    {locationNames.length < 20 && (
                       <Button variant="outline" size="sm" onClick={addLocationName} data-testid="add-location-name-btn">
                         <Plus className="w-4 h-4 mr-1" />
                         Add
