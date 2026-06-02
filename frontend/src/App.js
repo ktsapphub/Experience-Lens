@@ -50,6 +50,7 @@ import {
   Link2,
   LogIn,
   LogOut,
+  RotateCcw,
   User as UserIcon
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -988,6 +989,33 @@ function SearchPage() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  // Wipe results + reset the inputs for the currently-active search method, so the user
+  // can start a fresh search without manually clearing fields. The other tabs' inputs
+  // are left untouched (no need to retype the values you weren't using).
+  const handleRestart = useCallback(() => {
+    // Always: clear results, selections, derived data
+    setPlaces([]);
+    setAllPlaces([]);
+    setSelectedIds(new Set());
+    setRemovedIds(new Set());
+    setFailedImages({});
+    setShortLinks({});
+    setGeneratedDescs({});
+    setManualCategories({});
+    setPagination({ page: 1, totalPages: 1, total: 0 });
+    setSearched(false);
+
+    // Reset only the active tab's inputs
+    if (searchTab === "location") {
+      setLocation("");
+    } else if (searchTab === "region") {
+      setRegion("");
+    } else if (searchTab === "specific") {
+      setLocationNames([{ id: `ln-${Date.now()}`, name: "", city: "", state: "" }]);
+    }
+    toast.success("Cleared — ready for a new search");
+  }, [searchTab]);
+
   // Manually assign / clear a category for one location (Specific Places flow).
   // Passing categoryId="" clears the assignment.
   const handleAssignCategory = useCallback((placeId, categoryId) => {
@@ -1369,8 +1397,8 @@ function SearchPage() {
             </Tabs>
           </div>
 
-          {/* Search Button */}
-          <div className="flex justify-center">
+          {/* Search + Restart Buttons */}
+          <div className="flex flex-wrap items-center justify-center gap-3">
             <Button
               onClick={() => handleSearch(1)}
               disabled={loading || (categories.length === 0 && searchTab !== "specific")}
@@ -1389,6 +1417,18 @@ function SearchPage() {
                   Search Locations
                 </>
               )}
+            </Button>
+            <Button
+              onClick={handleRestart}
+              variant="outline"
+              size="lg"
+              disabled={loading}
+              className="h-14 px-6 text-base font-medium border-2"
+              data-testid="restart-button"
+              title="Clear results and start a new search"
+            >
+              <RotateCcw className="w-5 h-5 mr-2" />
+              Restart
             </Button>
           </div>
         </div>
