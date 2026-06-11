@@ -1078,9 +1078,19 @@ function SearchPage() {
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      const locationPart = location || region || 'locations';
-      const suffix = exportType === 'selected' ? '-selected' : '';
-      link.download = `${categories.join('-') || 'search'}-${locationPart.replace(/\s+/g, '-')}${suffix}.csv`;
+      // Filename convention: <search-type>-dd-mm-yyyy-<count>.csv
+      const typeLabel = (
+        searchTab === "location" ? "city-zip" :
+        searchTab === "region" ? "region" :
+        searchTab === "specific" ? "specific-places" :
+        "search"
+      );
+      const now = new Date();
+      const dd = String(now.getDate()).padStart(2, '0');
+      const mm = String(now.getMonth() + 1).padStart(2, '0');
+      const yyyy = now.getFullYear();
+      const count = cleanedData.length;
+      link.download = `${typeLabel}-${dd}-${mm}-${yyyy}-${count}.csv`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -1090,7 +1100,7 @@ function SearchPage() {
       console.error("Export error:", error);
       toast.error("Failed to export CSV");
     }
-  }, [visiblePlaces, visibleAllPlaces, categories, location, region, selectedIds, failedImages, shortLinks, generatedDescs, manualCategories]);
+  }, [visiblePlaces, visibleAllPlaces, searchTab, selectedIds, failedImages, shortLinks, generatedDescs, manualCategories]);
 
   const handleKeyPress = (e) => {
     if (e.key === 'Enter') {
