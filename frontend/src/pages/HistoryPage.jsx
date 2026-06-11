@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,7 +25,8 @@ import {
   Palette,
   Music,
   UtensilsCrossed,
-  RefreshCw
+  RefreshCw,
+  Wand2
 } from "lucide-react";
 import Header from "@/components/Header";
 
@@ -62,7 +64,7 @@ const SEARCH_METHOD_LABELS = {
   specific: "Specific Places"
 };
 
-function HistoryEntry({ entry, onDelete }) {
+function HistoryEntry({ entry, onDelete, onRerun }) {
   const [isOpen, setIsOpen] = useState(false);
   const CategoryIcon = CATEGORY_ICONS[entry.category] || MapPin;
   
@@ -127,17 +129,33 @@ function HistoryEntry({ entry, onDelete }) {
                 </div>
               </div>
               
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDelete(entry.id);
-                }}
-                className="text-muted-foreground hover:text-destructive"
-              >
-                <Trash2 className="w-4 h-4" />
-              </Button>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onRerun(entry);
+                  }}
+                  className="bg-primary hover:bg-primary/90 h-8 text-xs"
+                  title="Re-run this search on the main page so you can shorten links, generate AI descriptions, assign categories, and export CSV."
+                  data-testid={`history-rerun-${entry.id}`}
+                >
+                  <Wand2 className="w-3.5 h-3.5 mr-1" />
+                  Re-run & Transform
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDelete(entry.id);
+                  }}
+                  className="text-muted-foreground hover:text-destructive"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
           </CardHeader>
         </CollapsibleTrigger>
@@ -238,6 +256,7 @@ function HistoryEntry({ entry, onDelete }) {
 export default function HistoryPage() {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   const fetchHistory = async () => {
     setLoading(true);
@@ -278,6 +297,26 @@ export default function HistoryPage() {
       console.error("Error clearing history:", error);
       toast.error("Failed to clear history");
     }
+  };
+
+  // Re-run a historical search on the main page so the user gets the full
+  // transformation UI: select rows, shorten links, generate AI descriptions,
+  // assign manual categories, and export CSV.
+  const handleRerun = (entry) => {
+    // The history `category` field may be a comma-separated list (multi-category).
+    const categories = (entry.category || "")
+      .split(",")
+      .map(c => c.trim())
+      .filter(Boolean);
+    const params = {
+      categories,
+      search_method: entry.search_method || "location",
+      location: entry.location || "",
+      region: entry.region || "",
+      location_names: entry.location_names || [],
+    };
+    toast.success("Re-running search on the main page…");
+    navigate("/", { state: { rerunSearch: params } });
   };
 
   return (
@@ -329,6 +368,7 @@ export default function HistoryPage() {
                 key={entry.id} 
                 entry={entry} 
                 onDelete={handleDelete}
+                onRerun={handleRerun}
               />
             ))}
           </div>

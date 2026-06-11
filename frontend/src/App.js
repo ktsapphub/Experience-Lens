@@ -977,6 +977,45 @@ function SearchPage() {
     }
   }, [categories, location, region, locationNames, searchTab, markAsSeen]);
 
+  // ---- Re-run from /history ----
+  // When the user clicks "Re-run & Transform" on a history entry, HistoryPage navigates
+  // here with `state.rerunSearch = { categories, search_method, location, region, location_names }`.
+  // We hydrate the inputs synchronously then trigger handleSearch on the next render.
+  const routerLocation = useLocation();
+  const [pendingRerun, setPendingRerun] = useState(false);
+  useEffect(() => {
+    const rerun = routerLocation.state?.rerunSearch;
+    if (!rerun) return;
+    setCategories(Array.isArray(rerun.categories) ? rerun.categories : []);
+    const method = rerun.search_method === "region" ? "region"
+                 : rerun.search_method === "specific" ? "specific"
+                 : "location";
+    setSearchTab(method);
+    setLocation(rerun.location || "");
+    setRegion(rerun.region || "");
+    if (Array.isArray(rerun.location_names) && rerun.location_names.length > 0) {
+      // History stores "Name, City, ST" strings. Push them back into the name field;
+      // user can re-edit / split if needed before re-running.
+      setLocationNames(rerun.location_names.map((s, i) => ({
+        id: `rerun-${Date.now()}-${i}`,
+        name: s || "",
+        city: "",
+        state: "",
+      })));
+    } else {
+      setLocationNames([{ id: `ln-${Date.now()}`, name: "", city: "", state: "" }]);
+    }
+    setPendingRerun(true);
+    // Clear the router state so a manual back-nav doesn't loop the search.
+    window.history.replaceState({}, "");
+  }, [routerLocation.state]);
+
+  useEffect(() => {
+    if (!pendingRerun) return;
+    setPendingRerun(false);
+    handleSearch(1);
+  }, [pendingRerun, handleSearch]);
+
   // Client-side pagination — no backend call, results are cached from the initial search.
   const handlePageChange = (newPage) => {
     if (newPage < 1 || newPage > pagination.totalPages || newPage === pagination.page) return;
