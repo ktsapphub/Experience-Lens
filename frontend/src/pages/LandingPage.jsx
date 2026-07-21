@@ -11,13 +11,17 @@ import {
   Search,
   Database,
   Link2,
+  LogIn,
 } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 /**
  * Experience Lens landing page.
  * Renders at `/`. The search tool itself is at `/search`.
  */
 export default function LandingPage() {
+  const { user } = useAuth();
+  const isAuthenticated = !!user && user !== false;
   const categories = [
     { icon: Mountain, label: "Thrill Seeking", hex: "#E63946" },
     { icon: UtensilsCrossed, label: "Foodie", hex: "#F4A261" },
@@ -93,17 +97,33 @@ export default function LandingPage() {
               </p>
 
               <div className="mt-10 flex flex-wrap items-center gap-3">
-                <Link to="/search">
-                  <Button size="lg" className="h-14 px-8 text-base font-medium bg-primary hover:bg-primary/90 shadow-lg hover:shadow-xl transition-all" data-testid="cta-start-searching">
-                    Start Exploring
-                    <ArrowRight className="w-4 h-4 ml-2" />
-                  </Button>
-                </Link>
-                <Link to="/history">
-                  <Button variant="outline" size="lg" className="h-14 px-6 text-base font-medium border-2" data-testid="cta-view-history">
-                    View Past Searches
-                  </Button>
-                </Link>
+                {isAuthenticated ? (
+                  <>
+                    <Link to="/search">
+                      <Button size="lg" className="h-14 px-8 text-base font-medium bg-primary hover:bg-primary/90 shadow-lg hover:shadow-xl transition-all" data-testid="cta-start-searching">
+                        Start Exploring
+                        <ArrowRight className="w-4 h-4 ml-2" />
+                      </Button>
+                    </Link>
+                    <Link to="/history">
+                      <Button variant="outline" size="lg" className="h-14 px-6 text-base font-medium border-2" data-testid="cta-view-history">
+                        View Past Searches
+                      </Button>
+                    </Link>
+                  </>
+                ) : (
+                  <>
+                    <Link to="/login">
+                      <Button size="lg" className="h-14 px-8 text-base font-medium bg-primary hover:bg-primary/90 shadow-lg hover:shadow-xl transition-all" data-testid="cta-hero-signin">
+                        <LogIn className="w-4 h-4 mr-2" />
+                        Sign in to Start
+                      </Button>
+                    </Link>
+                    <p className="text-xs text-muted-foreground max-w-xs leading-relaxed sm:ml-2">
+                      Sign in to unlock search, history, and CSV export.
+                    </p>
+                  </>
+                )}
               </div>
             </div>
 
@@ -198,10 +218,19 @@ export default function LandingPage() {
           <p className="text-muted-foreground mb-6 max-w-xl mx-auto">
             Kick off a search in seconds — pick a category, pick a place, and let Experience Lens do the enrichment.
           </p>
-          <Link to="/search">
+          <Link to={isAuthenticated ? "/search" : "/login"}>
             <Button size="lg" className="h-12 px-8 bg-primary hover:bg-primary/90">
-              Open the Search Tool
-              <ArrowRight className="w-4 h-4 ml-2" />
+              {isAuthenticated ? (
+                <>
+                  Open the Search Tool
+                  <ArrowRight className="w-4 h-4 ml-2" />
+                </>
+              ) : (
+                <>
+                  <LogIn className="w-4 h-4 mr-2" />
+                  Sign in to Continue
+                </>
+              )}
             </Button>
           </Link>
         </div>

@@ -99,18 +99,25 @@ export default function SearchFilters({
                         )}
                         className={`relative p-4 rounded-xl border-2 transition-all duration-200 text-left group ${
                           isSelected
-                            ? 'border-primary bg-primary/5 shadow-md'
+                            ? 'shadow-md'
                             : 'border-border bg-white hover:border-primary/50 hover:shadow-sm'
                         }`}
+                        style={isSelected ? {
+                          borderColor: cat.hex,
+                          backgroundColor: `${cat.hex}0F`, // ~6% tint of the category color
+                        } : undefined}
                         data-testid={`category-btn-${cat.id}`}
                       >
                         <div className={`w-10 h-10 rounded-lg ${cat.color} flex items-center justify-center mb-3 transition-transform group-hover:scale-110`}>
                           <Icon className="w-5 h-5 text-white" />
                         </div>
-                        <p className="font-medium text-sm mb-1">{cat.name}</p>
+                        <p className="font-medium text-sm mb-1" style={isSelected ? { color: cat.hex } : undefined}>{cat.name}</p>
                         <p className="text-xs text-muted-foreground line-clamp-2">{cat.description}</p>
                         {isSelected && (
-                          <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-primary flex items-center justify-center">
+                          <div
+                            className="absolute top-2 right-2 w-5 h-5 rounded-full flex items-center justify-center"
+                            style={{ backgroundColor: cat.hex }}
+                          >
                             <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                             </svg>

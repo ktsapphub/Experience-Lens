@@ -42,11 +42,11 @@ const CATEGORY_ICONS = {
 };
 
 const CATEGORY_COLORS = {
-  thrill_seeking: "bg-orange-500",
-  super_chill: "bg-emerald-500",
-  creative: "bg-violet-500",
-  pure_entertainment: "bg-pink-500",
-  foodie: "bg-amber-500"
+  thrill_seeking: "#E63946",
+  super_chill: "#84A98C",
+  creative: "#0F8FA8",
+  pure_entertainment: "#9B5DE5",
+  foodie: "#F4A261",
 };
 
 const CATEGORY_NAMES = {
@@ -108,7 +108,10 @@ function CategoryConfigCard({ categoryId, config, onUpdate }) {
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className={`w-10 h-10 rounded-lg ${CATEGORY_COLORS[categoryId]} flex items-center justify-center`}>
+            <div
+              className="w-10 h-10 rounded-lg flex items-center justify-center"
+              style={{ backgroundColor: CATEGORY_COLORS[categoryId] || "#667078" }}
+            >
               <CategoryIcon className="w-5 h-5 text-white" />
             </div>
             <div>

@@ -19,7 +19,6 @@ import {
   Compass,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-
 function NavItem({ path, label, icon: Icon, active, onClick }) {
   return (
     <button
@@ -50,6 +49,9 @@ export default function FloatingMenu() {
   const navigate = useNavigate();
 
   const isActive = (path) => location.pathname === path;
+  const isLanding = location.pathname === "/";
+  const isAuthenticated = !!user && user !== false;
+
   const go = (path) => {
     setOpen(false);
     navigate(path);
@@ -60,6 +62,27 @@ export default function FloatingMenu() {
     setOpen(false);
     navigate("/");
   };
+
+  // Landing page, not signed in → render only a compact "Sign in" button.
+  // The hamburger menu is intentionally hidden until the user is authenticated.
+  if (isLanding && !isAuthenticated) {
+    return (
+      <Link
+        to="/login"
+        className="fixed top-4 right-4 z-50 inline-flex items-center gap-2 px-4 h-11 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 hover:shadow-xl transition-all text-sm font-medium"
+        data-testid="landing-signin-btn"
+      >
+        <LogIn className="w-4 h-4" />
+        Sign in
+      </Link>
+    );
+  }
+
+  // Auth-check still in progress on the landing page → render nothing to
+  // avoid a flash of the wrong control.
+  if (isLanding && user === null) {
+    return null;
+  }
 
   return (
     <>
