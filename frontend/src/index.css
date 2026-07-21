@@ -198,3 +198,19 @@ code, .mono {
     background-size: 200% 100%;
     animation: shimmer 1.5s infinite;
 }
+
+/* Auto-infinite marquee for the "Five Experience Lenses" strip */
+@keyframes marquee-left {
+    0%   { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+}
+
+.marquee {
+    display: flex;
+    width: max-content;
+    animation: marquee-left 28s linear infinite;
+}
+
+.marquee-container:hover .marquee {
+    animation-play-state: paused;
+}
