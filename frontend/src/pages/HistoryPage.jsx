@@ -316,7 +316,7 @@ export default function HistoryPage() {
       location_names: entry.location_names || [],
     };
     toast.success("Re-running search on the main page…");
-    navigate("/", { state: { rerunSearch: params } });
+    navigate("/search", { state: { rerunSearch: params } });
   };
 
   return (

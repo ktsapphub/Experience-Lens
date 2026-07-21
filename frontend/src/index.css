@@ -6,28 +6,32 @@
 
 @layer base {
     :root {
-        --background: 0 0% 100%;
-        --foreground: 240 6% 4%;
-        --card: 0 0% 100%;
-        --card-foreground: 240 6% 4%;
+        /* ---- Experience Lens palette (Feb 2026) ----
+           Muted neutral system + Deep Teal primary. Category hex colors are
+           applied inline (they live in App.js CATEGORIES / CATEGORY_COLORS)
+           so this palette never overrides them. */
+        --background: 60 11% 98%;        /* Warm White  #FAFAF8 */
+        --foreground: 206 24% 12%;       /* Deep Ink    #182026 */
+        --card: 0 0% 100%;               /* Pure White  #FFFFFF */
+        --card-foreground: 206 24% 12%;
         --popover: 0 0% 100%;
-        --popover-foreground: 240 6% 4%;
-        --primary: 217 91% 60%;
+        --popover-foreground: 206 24% 12%;
+        --primary: 183 77% 26%;          /* Deep Teal   #0F6F73 */
         --primary-foreground: 0 0% 100%;
-        --secondary: 240 5% 96%;
-        --secondary-foreground: 240 6% 10%;
-        --muted: 240 5% 96%;
-        --muted-foreground: 240 4% 46%;
-        --accent: 240 5% 96%;
-        --accent-foreground: 240 6% 10%;
-        --destructive: 0 84% 60%;
-        --destructive-foreground: 0 0% 98%;
-        --border: 240 6% 90%;
-        --input: 240 6% 90%;
-        --ring: 217 91% 60%;
-        --chart-1: 12 76% 61%;
-        --chart-2: 173 58% 39%;
-        --chart-3: 197 37% 24%;
+        --secondary: 60 11% 96%;         /* Soft warm neutral */
+        --secondary-foreground: 206 24% 12%;
+        --muted: 60 11% 96%;
+        --muted-foreground: 210 8% 43%;  /* Slate Gray  #667078 */
+        --accent: 60 11% 96%;
+        --accent-foreground: 206 24% 12%;
+        --destructive: 0 74% 50%;
+        --destructive-foreground: 0 0% 100%;
+        --border: 207 8% 90%;            /* Soft Gray   #E4E7E9 */
+        --input: 207 8% 90%;
+        --ring: 183 77% 26%;             /* Deep Teal */
+        --chart-1: 183 77% 26%;
+        --chart-2: 210 8% 43%;
+        --chart-3: 204 34% 12%;
         --chart-4: 43 74% 66%;
         --chart-5: 27 87% 67%;
         --radius: 0.5rem;

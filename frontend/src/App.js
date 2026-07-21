@@ -60,6 +60,8 @@ import LoginPage from "@/pages/LoginPage";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import OperationProgress from "@/components/OperationProgress";
 import SearchFilters from "@/components/SearchFilters";
+import FloatingMenu from "@/components/FloatingMenu";
+import LandingPage from "@/pages/LandingPage";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 
 // Helper to get seen locations from localStorage
@@ -1164,15 +1166,15 @@ function SearchPage() {
                 </div>
                 <div>
                   <h1 className="text-xl font-semibold" style={{ fontFamily: 'IBM Plex Sans, sans-serif' }} data-testid="app-title">
-                    MapData Collector
+                    Experience Lens
                   </h1>
-                  <p className="text-xs text-muted-foreground">Smart Google Maps Location Scraper</p>
+                  <p className="text-xs text-muted-foreground">Discover places through a sharper lens.</p>
                 </div>
               </Link>
               
               {/* Navigation */}
               <nav className="flex items-center gap-1 ml-4">
-                <Link to="/">
+                <Link to="/search">
                   <Button variant="ghost" size="sm" className="text-sm">
                     <Search className="w-4 h-4 mr-1" />
                     Search
@@ -1474,8 +1476,10 @@ function App() {
     <AuthProvider>
       <Router>
         <Toaster position="top-right" richColors />
+        <FloatingMenu />
         <Routes>
-          <Route path="/" element={<SearchPage />} />
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/search" element={<SearchPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route
             path="/history"

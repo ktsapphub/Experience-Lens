@@ -46,16 +46,16 @@ export default function Header({ children }) {
               </div>
               <div>
                 <h1 className="text-xl font-semibold" style={{ fontFamily: 'IBM Plex Sans, sans-serif' }}>
-                  MapData Collector
+                  Experience Lens
                 </h1>
-                <p className="text-xs text-muted-foreground">Smart Google Maps Location Scraper</p>
+                <p className="text-xs text-muted-foreground">Discover places through a sharper lens.</p>
               </div>
             </Link>
             
             <nav className="flex items-center gap-1 ml-4">
-              <Link to="/">
+              <Link to="/search">
                 <Button 
-                  variant={isActive('/') ? 'secondary' : 'ghost'} 
+                  variant={isActive('/search') ? 'secondary' : 'ghost'} 
                   size="sm" 
                   className="text-sm"
                 >

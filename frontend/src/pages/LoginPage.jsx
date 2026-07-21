@@ -66,9 +66,9 @@ export default function LoginPage() {
           </div>
           <div>
             <h1 className="text-xl font-semibold" style={{ fontFamily: "IBM Plex Sans, sans-serif" }}>
-              MapData Collector
+              Experience Lens
             </h1>
-            <p className="text-xs text-muted-foreground">Smart Google Maps Location Scraper</p>
+            <p className="text-xs text-muted-foreground">Discover places through a sharper lens.</p>
           </div>
         </Link>
 
