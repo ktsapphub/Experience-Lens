@@ -652,348 +652,271 @@ async def get_regions():
     return {"regions": regions}
 
 
-@api_router.post("/places/search", response_model=SearchResponse)
-async def search_places(request: SearchRequest):
-    """Search for places based on category and location"""
-    
-    if not GOOGLE_PLACES_API_KEY:
-        logger.error("Google Places API key not configured")
-        raise HTTPException(
-            status_code=500,
-            detail="Google Places API is not configured. Please add GOOGLE_PLACES_API_KEY to backend/.env"
-        )
-    
-    # Normalize categories: support both single and multi
+# ---- Search helpers ----------------------------------------------------------
+# Extracted from `search_places` to keep the endpoint readable.  Each helper is
+# deliberately narrow: validation, Google API call, place normalization, and
+# the round-robin interleave. Behaviour is identical to the pre-refactor code.
+
+GOOGLE_PLACES_FIELDS = (
+    "places.id,places.displayName,places.formattedAddress,places.location,"
+    "places.websiteUri,places.internationalPhoneNumber,places.rating,"
+    "places.priceLevel,places.photos,places.editorialSummary,places.types"
+)
+
+
+def _normalize_search_request(request: "SearchRequest"):
+    """Validate the incoming request and produce (categories, location_names, search_locations)."""
     categories = request.categories if request.categories else ([request.category] if request.category else [])
-    categories = [c for c in categories if c]  # Remove blanks
-    
+    categories = [c for c in categories if c]
+
     for cat in categories:
         if cat not in CATEGORY_TYPES:
             raise HTTPException(
                 status_code=400,
-                detail=f"Invalid category '{cat}'. Valid categories: {list(CATEGORY_TYPES.keys())}"
+                detail=f"Invalid category '{cat}'. Valid categories: {list(CATEGORY_TYPES.keys())}",
             )
-    
-    # Category is required unless searching by specific location names
+
     if not categories and not request.location_names:
         raise HTTPException(
             status_code=400,
-            detail="Please select a category, or use specific location names to search without one"
+            detail="Please select a category, or use specific location names to search without one",
         )
-    
-    # Validate at least one location method is provided
+
     if not request.location and not request.region and not request.location_names:
         raise HTTPException(
             status_code=400,
-            detail="Please provide a location (city/zip), region, or specific location names"
+            detail="Please provide a location (city/zip), region, or specific location names",
         )
-    
-    # Limit location names to 10
-    location_names = request.location_names[:10] if request.location_names else []
-    
-    # Build list of locations to search
-    search_locations = []
-    
-    # If specific location names provided, use those
+
+    location_names = (request.location_names or [])[:10]
+    search_locations: List[str] = []
+
     if location_names:
-        for loc_name in location_names:
-            if loc_name.strip():
-                search_locations.append(loc_name.strip())
-    
-    # If region is selected, use states from that region
+        search_locations.extend(loc.strip() for loc in location_names if loc.strip())
+
     if request.region and request.region in US_REGIONS:
-        region_states = US_REGIONS[request.region]["states"]
-        # Pick representative cities/states for broader coverage
-        for state in region_states[:5]:  # Limit to first 5 states for performance
-            search_locations.append(state)
-    
-    # If single location/zip provided
+        # Pick representative states for broader coverage.
+        search_locations.extend(US_REGIONS[request.region]["states"][:5])
+
     if request.location:
         search_locations.append(request.location.strip())
-    
-    # Default to first location if multiple provided
-    if not search_locations:
-        raise HTTPException(
-            status_code=400,
-            detail="No valid search location provided"
-        )
-    
-    try:
-        all_places = []
-        seen_ids = set()  # Track unique place IDs to prevent duplicates
-        seen_names_addresses = set()  # Track name+address combos for additional dedup
-        
-        # Determine if this is a direct location name search (no category)
-        is_direct_search = not categories and bool(request.location_names)
-        
-        # Build category search list — if no categories, use one pass with empty keywords
-        category_list = categories if categories else [""]
 
-        # Scale the result cap with the number of categories so each one gets a fair
-        # share of the budget (single category: 60, two: 120, three: 180, …).
-        # Without this, a category processed later in the loop gets ~0 results once
-        # the global cap is hit by earlier categories.
-        max_total_results = max(60, 60 * len(category_list))
-        
-        headers = {
-            "X-Goog-Api-Key": GOOGLE_PLACES_API_KEY,
-            "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.location,places.websiteUri,places.internationalPhoneNumber,places.rating,places.priceLevel,places.photos,places.editorialSummary,places.types"
-        }
-        
+    if not search_locations:
+        raise HTTPException(status_code=400, detail="No valid search location provided")
+
+    return categories, location_names, search_locations
+
+
+async def _google_text_search(http_client: httpx.AsyncClient, query: str) -> list:
+    """Run one Places Text Search (New) call and return the raw `places` list (empty on error)."""
+    payload = {"textQuery": query, "maxResultCount": 20}
+    headers = {
+        "X-Goog-Api-Key": GOOGLE_PLACES_API_KEY,
+        "X-Goog-FieldMask": GOOGLE_PLACES_FIELDS,
+    }
+    response = await http_client.post(
+        "https://places.googleapis.com/v1/places:searchText",
+        json=payload,
+        headers=headers,
+    )
+    if response.status_code != 200:
+        logger.warning(f"Google API error for {query!r}: {response.status_code}")
+        return []
+    return response.json().get("places", [])
+
+
+def _build_place_result(place: dict, category: str) -> Optional["PlaceResult"]:
+    """Map a raw Google Place dict → PlaceResult. Returns None if a hard-required field is missing."""
+    photos_data = place.get("photos", [])
+    website = place.get("websiteUri")
+    address = place.get("formattedAddress", "")
+    if not photos_data or not website or not address or address == "Address not available":
+        return None
+
+    photos = []
+    for photo in photos_data[:3]:
+        photo_name = photo.get("name", "")
+        if photo_name:
+            photo_url = (
+                f"https://places.googleapis.com/v1/{photo_name}/media"
+                f"?maxHeightPx=400&maxWidthPx=600&key={GOOGLE_PLACES_API_KEY}"
+            )
+            photos.append(Photo(url=photo_url, height=400, width=600))
+
+    coords = place.get("location", {}) or {}
+    editorial = place.get("editorialSummary", {}) or {}
+
+    return PlaceResult(
+        id=place.get("id", str(uuid.uuid4())),
+        name=place.get("displayName", {}).get("text", "Unknown"),
+        address=address,
+        latitude=coords.get("latitude", 0),
+        longitude=coords.get("longitude", 0),
+        website=website,
+        phone=place.get("internationalPhoneNumber"),
+        instagram=extract_instagram(place),
+        description=editorial.get("text", ""),
+        photos=photos,
+        rating=place.get("rating"),
+        price_range=map_price_level(place),
+        category=category,
+    )
+
+
+def _add_places_deduped(
+    raw_places: list,
+    category: str,
+    accumulator: list,
+    seen_ids: set,
+    seen_name_addr: set,
+) -> None:
+    """Normalize + dedupe raw Google places into the accumulator list."""
+    for place in raw_places:
+        result = _build_place_result(place, category)
+        if result is None:
+            continue
+        pid = place.get("id")
+        name_addr_key = f"{result.name}|{result.address}".lower()
+        if pid in seen_ids or name_addr_key in seen_name_addr:
+            continue
+        seen_ids.add(pid)
+        seen_name_addr.add(name_addr_key)
+        accumulator.append(result)
+
+
+def _interleave_by_category(all_places: list, categories: list) -> list:
+    """Round-robin the results so Page 1 shows a balanced mix across categories."""
+    if len(categories) <= 1:
+        return all_places
+    buckets: dict = {c: [] for c in categories}
+    others: list = []
+    for p in all_places:
+        (buckets.get(p.category) if p.category in buckets else others).append(p) if p.category not in buckets else buckets[p.category].append(p)
+    # Simpler / clearer than the ternary above:
+    buckets = {c: [] for c in categories}
+    others = []
+    for p in all_places:
+        if p.category in buckets:
+            buckets[p.category].append(p)
+        else:
+            others.append(p)
+    interleaved: list = []
+    while any(buckets[c] for c in categories):
+        for c in categories:
+            if buckets[c]:
+                interleaved.append(buckets[c].pop(0))
+    return interleaved + others
+
+
+async def _persist_search_history(
+    request: "SearchRequest",
+    categories: list,
+    location_names: list,
+    places: list,
+) -> None:
+    """Store a lightweight history record so /history can list past searches."""
+    if request.region:
+        search_method = "region"
+    elif request.location_names:
+        search_method = "specific"
+    else:
+        search_method = "location"
+
+    history_results = [{"name": p.name, "address": p.address, "website": p.website} for p in places]
+    doc = {
+        "id": str(uuid.uuid4()),
+        "category": ",".join(categories) if categories else "",
+        "search_method": search_method,
+        "location": request.location,
+        "region": request.region,
+        "location_names": location_names,
+        "results_count": len(places),
+        "results": history_results,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.search_history.insert_one(doc)
+
+
+@api_router.post("/places/search", response_model=SearchResponse)
+async def search_places(request: SearchRequest):
+    """Search for places based on category and location"""
+    if not GOOGLE_PLACES_API_KEY:
+        logger.error("Google Places API key not configured")
+        raise HTTPException(
+            status_code=500,
+            detail="Google Places API is not configured. Please add GOOGLE_PLACES_API_KEY to backend/.env",
+        )
+
+    categories, location_names, search_locations = _normalize_search_request(request)
+
+    # No category ⇒ specific-place lookup; text_query is the location name itself.
+    is_direct_search = not categories and bool(request.location_names)
+    category_list = categories if categories else [""]
+
+    # Scale the result cap by number of categories so each one gets a fair share.
+    max_total_results = max(60, 60 * len(category_list))
+
+    try:
+        all_places: list = []
+        seen_ids: set = set()
+        seen_name_addr: set = set()
+
         async with httpx.AsyncClient(timeout=30.0) as http_client:
-          for current_category in category_list:
-            # Get keywords for this category
-            keywords = CATEGORY_KEYWORDS.get(current_category, "") if current_category else ""
-            
-            # Search across all provided locations
-            for search_location in search_locations:
-                if len(all_places) >= max_total_results:  # Cap total results
-                    break
-                
-                # Use Text Search API (New) for better results
-                if is_direct_search:
-                    text_query = search_location
-                else:
-                    text_query = f"{keywords} in {search_location}"
-                
-                search_payload = {
-                    "textQuery": text_query,
-                    "maxResultCount": 20
-                }
-                
-                response = await http_client.post(
-                    "https://places.googleapis.com/v1/places:searchText",
-                    json=search_payload,
-                    headers=headers
-                )
-                
-                if response.status_code != 200:
-                    logger.warning(f"Google API error for {search_location}: {response.status_code}")
-                    continue
-                
-                data = response.json()
-                
-                for place in data.get("places", []):
-                    # Skip places without photos
-                    photos_data = place.get("photos", [])
-                    if not photos_data:
-                        continue
-                    
-                    # Skip places without website
-                    website = place.get("websiteUri")
-                    if not website:
-                        continue
-                    
-                    # Skip places without proper address
-                    address = place.get("formattedAddress", "")
-                    if not address or address == "Address not available":
-                        continue
-                    
-                    # Build photo URLs (up to 3)
-                    photos = []
-                    for photo in photos_data[:3]:
-                        photo_name = photo.get("name", "")
-                        if photo_name:
-                            photo_url = f"https://places.googleapis.com/v1/{photo_name}/media?maxHeightPx=400&maxWidthPx=600&key={GOOGLE_PLACES_API_KEY}"
-                            photos.append(Photo(url=photo_url, height=400, width=600))
-                    
-                    # Get location coordinates
-                    location = place.get("location", {})
-                    
-                    # Get description from editorial summary
-                    editorial = place.get("editorialSummary", {})
-                    description = editorial.get("text", "") if editorial else ""
-                    
-                    place_result = PlaceResult(
-                        id=place.get("id", str(uuid.uuid4())),
-                        name=place.get("displayName", {}).get("text", "Unknown"),
-                        address=address,
-                        latitude=location.get("latitude", 0),
-                        longitude=location.get("longitude", 0),
-                        website=website,
-                        phone=place.get("internationalPhoneNumber"),
-                        instagram=extract_instagram(place),
-                        description=description,
-                        photos=photos,
-                        rating=place.get("rating"),
-                        price_range=map_price_level(place),
-                        category=current_category
-                    )
-                    
-                    # Deduplication check by ID and name+address
-                    place_id = place.get("id")
-                    name_addr_key = f"{place_result.name}|{place_result.address}".lower()
-                    
-                    if place_id in seen_ids or name_addr_key in seen_names_addresses:
-                        continue
-                    
-                    seen_ids.add(place_id)
-                    seen_names_addresses.add(name_addr_key)
-                    all_places.append(place_result)
-            
-            # Make additional searches with specific place types to get more results (only with category)
-            place_types = CATEGORY_TYPES.get(current_category, []) if current_category else []
-            
-            for place_type in place_types[:2]:
-                if len(all_places) >= max_total_results:  # Cap at scaled total
-                    break
-                
-                # Use first search location for additional searches
-                additional_location = search_locations[0] if search_locations else ""
-                if not additional_location:
-                    break
-                    
-                search_payload = {
-                    "textQuery": f"{place_type} in {additional_location}",
-                    "maxResultCount": 20
-                }
-                
-                response = await http_client.post(
-                    "https://places.googleapis.com/v1/places:searchText",
-                    json=search_payload,
-                    headers=headers
-                )
-                
-                if response.status_code == 200:
-                    data = response.json()
-                    for place in data.get("places", []):
-                        # Skip places without photos
-                        photos_data = place.get("photos", [])
-                        if not photos_data:
-                            continue
-                        
-                        # Skip places without website
-                        website = place.get("websiteUri")
-                        if not website:
-                            continue
-                        
-                        # Skip places without proper address
-                        address = place.get("formattedAddress", "")
-                        if not address or address == "Address not available":
-                            continue
-                        
-                        photos = []
-                        for photo in photos_data[:3]:
-                            photo_name = photo.get("name", "")
-                            if photo_name:
-                                photo_url = f"https://places.googleapis.com/v1/{photo_name}/media?maxHeightPx=400&maxWidthPx=600&key={GOOGLE_PLACES_API_KEY}"
-                                photos.append(Photo(url=photo_url, height=400, width=600))
-                        
-                        location = place.get("location", {})
-                        editorial = place.get("editorialSummary", {})
-                        description = editorial.get("text", "") if editorial else ""
-                        
-                        place_result = PlaceResult(
-                            id=place.get("id", str(uuid.uuid4())),
-                            name=place.get("displayName", {}).get("text", "Unknown"),
-                            address=address,
-                            latitude=location.get("latitude", 0),
-                            longitude=location.get("longitude", 0),
-                            website=website,
-                            phone=place.get("internationalPhoneNumber"),
-                            instagram=extract_instagram(place),
-                            description=description,
-                            photos=photos,
-                            rating=place.get("rating"),
-                            price_range=map_price_level(place),
-                            category=current_category
-                        )
-                        
-                        # Deduplication check by ID and name+address
-                        place_id = place.get("id")
-                        name_addr_key = f"{place_result.name}|{place_result.address}".lower()
-                        
-                        if place_id in seen_ids or name_addr_key in seen_names_addresses:
-                            continue
-                        
-                        seen_ids.add(place_id)
-                        seen_names_addresses.add(name_addr_key)
-                        all_places.append(place_result)
-        
-        # Enrich places with Instagram handles from their websites
+            for current_category in category_list:
+                keywords = CATEGORY_KEYWORDS.get(current_category, "") if current_category else ""
+
+                # Pass 1: keyword-based search per location
+                for search_location in search_locations:
+                    if len(all_places) >= max_total_results:
+                        break
+                    text_query = search_location if is_direct_search else f"{keywords} in {search_location}"
+                    raw = await _google_text_search(http_client, text_query)
+                    _add_places_deduped(raw, current_category, all_places, seen_ids, seen_name_addr)
+
+                # Pass 2: additional place-type searches to broaden results
+                place_types = CATEGORY_TYPES.get(current_category, []) if current_category else []
+                for place_type in place_types[:2]:
+                    if len(all_places) >= max_total_results:
+                        break
+                    anchor = search_locations[0] if search_locations else ""
+                    if not anchor:
+                        break
+                    raw = await _google_text_search(http_client, f"{place_type} in {anchor}")
+                    _add_places_deduped(raw, current_category, all_places, seen_ids, seen_name_addr)
+
+        # Enrichment + ordering
         async with httpx.AsyncClient(timeout=10.0) as ig_client:
             all_places = await enrich_places_with_instagram(all_places, ig_client)
+        all_places = _interleave_by_category(all_places, categories)
 
-        # Interleave results by category so Page 1 contains a balanced mix when
-        # multiple categories are selected (round-robin by category).
-        # When only one category is selected this is a no-op.
-        if len(categories) > 1:
-            buckets: dict = {c: [] for c in categories}
-            others: list = []
-            for p in all_places:
-                if p.category in buckets:
-                    buckets[p.category].append(p)
-                else:
-                    others.append(p)
-            interleaved = []
-            while any(buckets[c] for c in categories):
-                for c in categories:
-                    if buckets[c]:
-                        interleaved.append(buckets[c].pop(0))
-            all_places = interleaved + others
+        await _persist_search_history(request, categories, location_names, all_places)
 
-        # Store search in history with results
-        # Determine search method
-        search_method = "location"
-        if request.region:
-            search_method = "region"
-        elif request.location_names and len(request.location_names) > 0:
-            search_method = "specific"
-        
-        # Prepare results for history (text only)
-        history_results = [
-            {
-                "name": p.name,
-                "address": p.address,
-                "website": p.website
-            }
-            for p in all_places
-        ]
-        
-        search_history = {
-            "id": str(uuid.uuid4()),
-            "category": ",".join(categories) if categories else "",
-            "search_method": search_method,
-            "location": request.location,
-            "region": request.region,
-            "location_names": location_names,
-            "results_count": len(all_places),
-            "results": history_results,
-            "timestamp": datetime.now(timezone.utc).isoformat()
-        }
-        await db.search_history.insert_one(search_history)
-        
         # Pagination
         total = len(all_places)
         per_page = request.per_page
         total_pages = (total + per_page - 1) // per_page if total > 0 else 1
         page = max(1, min(request.page, total_pages))
-        
-        start_idx = (page - 1) * per_page
-        end_idx = start_idx + per_page
-        paginated_places = all_places[start_idx:end_idx]
-        
+        start = (page - 1) * per_page
         return SearchResponse(
             success=True,
-            places=paginated_places,
+            places=all_places[start:start + per_page],
             total=total,
             page=page,
             per_page=per_page,
-            total_pages=total_pages
+            total_pages=total_pages,
         )
-    
+
     except httpx.RequestError as e:
-        logger.error(f"Request error: {str(e)}")
-        raise HTTPException(
-            status_code=502,
-            detail="Failed to connect to Google Places API"
-        )
+        logger.error(f"Request error: {e}")
+        raise HTTPException(status_code=502, detail="Failed to connect to Google Places API")
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Unexpected error: {str(e)}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"An unexpected error occurred: {str(e)}"
-        )
+        logger.error(f"Unexpected error: {e}")
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {e}")
+
+
+# ---- Legacy monolithic body removed; helpers above cover every code path ----
 
 
 @api_router.post("/places/export-csv")
