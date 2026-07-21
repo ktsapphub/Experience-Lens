@@ -67,14 +67,14 @@ export default function FloatingMenu() {
         type="button"
         onClick={() => setOpen(true)}
         aria-label="Open menu"
-        className="fixed top-4 left-4 z-50 flex items-center justify-center w-11 h-11 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 hover:shadow-xl transition-all"
+        className="fixed top-4 right-4 z-50 flex items-center justify-center w-11 h-11 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 hover:shadow-xl transition-all"
         data-testid="floating-menu-btn"
       >
         <Menu className="w-5 h-5" />
       </button>
 
       <Sheet open={open} onOpenChange={setOpen}>
-        <SheetContent side="left" className="w-72 p-0 flex flex-col" data-testid="floating-menu-panel">
+        <SheetContent side="right" className="w-72 p-0 flex flex-col" data-testid="floating-menu-panel">
           <SheetHeader className="p-6 border-b border-border bg-gradient-to-br from-primary/5 to-transparent">
             <SheetTitle className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center">
