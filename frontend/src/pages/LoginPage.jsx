@@ -24,7 +24,13 @@ export default function LoginPage() {
   const { login, register } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const from = location.state?.from || "/";
+  // After sign-in, always land the user in the search tool by default. If they
+  // were redirected here from a protected page, respect that origin instead —
+  // except when the origin is the landing page itself (there's nothing to do
+  // there once you're signed in).
+  const from = location.state?.from && location.state.from !== "/"
+    ? location.state.from
+    : "/search";
 
   const [mode, setMode] = useState("login"); // "login" | "register"
   const [email, setEmail] = useState("");
