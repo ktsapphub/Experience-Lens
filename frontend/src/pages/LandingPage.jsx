@@ -140,7 +140,7 @@ export default function LandingPage() {
                 <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-background/10 via-transparent to-transparent" />
               </div>
               {/* Small floating caption */}
-              <div className="absolute -bottom-4 -left-4 sm:-bottom-6 sm:-left-6 bg-card border border-border shadow-lg rounded-xl px-4 py-3 max-w-[260px]">
+              <div className="absolute -bottom-4 -left-4 sm:-bottom-6 sm:-left-6 bg-card border border-primary/40 ring-1 ring-primary/10 shadow-lg rounded-xl px-4 py-3 max-w-[260px]">
                 <p className="text-xs font-semibold" style={{ fontFamily: "IBM Plex Sans, sans-serif" }}>
                   Five lenses. One catalog.
                 </p>
@@ -196,14 +196,21 @@ export default function LandingPage() {
       <section className="max-w-6xl mx-auto px-6 py-20">
         <div className="grid gap-8 md:grid-cols-3">
           {features.map(({ icon: Icon, title, body }) => (
-            <div key={title} className="p-6 rounded-xl border border-border bg-card hover:shadow-sm transition-shadow">
-              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
-                <Icon className="w-5 h-5 text-primary" />
+            <div
+              key={title}
+              className="relative p-6 rounded-xl border border-primary/15 bg-gradient-to-br from-primary/[0.06] via-secondary/60 to-background shadow-sm hover:shadow-md hover:border-primary/30 transition-all group overflow-hidden"
+            >
+              {/* Subtle corner glow */}
+              <div className="pointer-events-none absolute -top-16 -right-16 w-40 h-40 rounded-full bg-primary/10 blur-2xl opacity-70" />
+              <div className="relative">
+                <div className="w-11 h-11 rounded-lg bg-primary/15 border border-primary/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                  <Icon className="w-5 h-5 text-primary" />
+                </div>
+                <h3 className="text-base font-semibold mb-2" style={{ fontFamily: "IBM Plex Sans, sans-serif" }}>
+                  {title}
+                </h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">{body}</p>
               </div>
-              <h3 className="text-base font-semibold mb-2" style={{ fontFamily: "IBM Plex Sans, sans-serif" }}>
-                {title}
-              </h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">{body}</p>
             </div>
           ))}
         </div>
