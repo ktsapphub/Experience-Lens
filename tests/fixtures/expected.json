@@ -1,0 +1,556 @@
+{
+  "searches": [
+    {
+      "name": "single category + city",
+      "response": {
+        "success": true,
+        "places": [
+          {
+            "id": "g1",
+            "name": "Taco, \"Palace\"",
+            "address": "1 Main St, Austin, TX",
+            "latitude": 30.0,
+            "longitude": -97.75,
+            "website": "https://tacopalace.example",
+            "phone": "+1 512-555-0100",
+            "instagram": "https://instagram.com/tacopalace",
+            "description": "Great tacos\nand more",
+            "photos": [
+              {
+                "url": "places/g1/photos/p1",
+                "height": 400,
+                "width": 600
+              },
+              {
+                "url": "places/g1/photos/p2",
+                "height": 400,
+                "width": 600
+              },
+              {
+                "url": "places/g1/photos/p3",
+                "height": 400,
+                "width": 600
+              }
+            ],
+            "rating": 5.0,
+            "price_range": "$$",
+            "category": "foodie"
+          },
+          {
+            "id": "g3",
+            "name": "Insta Bar",
+            "address": "3 Main St, Austin, TX",
+            "latitude": 30.27,
+            "longitude": -97.74,
+            "website": "https://instagram.com/insta_bar",
+            "phone": null,
+            "instagram": "https://instagram.com/insta_bar",
+            "description": "",
+            "photos": [
+              {
+                "url": "places/g3/photos/p1",
+                "height": 400,
+                "width": 600
+              }
+            ],
+            "rating": 4.3,
+            "price_range": "$$$",
+            "category": "foodie"
+          },
+          {
+            "id": "g6",
+            "name": "Free Park Cafe",
+            "address": "6 Park Rd, Austin, TX",
+            "latitude": 30.1,
+            "longitude": -97.1,
+            "website": "https://freepark.example",
+            "phone": null,
+            "instagram": null,
+            "description": "",
+            "photos": [
+              {
+                "url": "places/g6/photos/p1",
+                "height": 400,
+                "width": 600
+              }
+            ],
+            "rating": null,
+            "price_range": "$",
+            "category": "foodie"
+          },
+          {
+            "id": "g7",
+            "name": "Roast House",
+            "address": "7 Bean St, Austin, TX",
+            "latitude": 30.2,
+            "longitude": -97.2,
+            "website": "https://roast.example",
+            "phone": null,
+            "instagram": "https://instagram.com/roast_house",
+            "description": "",
+            "photos": [
+              {
+                "url": "places/g7/photos/p1",
+                "height": 400,
+                "width": 600
+              }
+            ],
+            "rating": null,
+            "price_range": "$",
+            "category": "foodie"
+          }
+        ],
+        "total": 4,
+        "page": 1,
+        "per_page": 20,
+        "total_pages": 1
+      }
+    },
+    {
+      "name": "legacy single category field",
+      "response": {
+        "success": true,
+        "places": [
+          {
+            "id": "g1",
+            "name": "Taco, \"Palace\"",
+            "address": "1 Main St, Austin, TX",
+            "latitude": 30.0,
+            "longitude": -97.75,
+            "website": "https://tacopalace.example",
+            "phone": "+1 512-555-0100",
+            "instagram": "https://instagram.com/tacopalace",
+            "description": "Great tacos\nand more",
+            "photos": [
+              {
+                "url": "places/g1/photos/p1",
+                "height": 400,
+                "width": 600
+              },
+              {
+                "url": "places/g1/photos/p2",
+                "height": 400,
+                "width": 600
+              },
+              {
+                "url": "places/g1/photos/p3",
+                "height": 400,
+                "width": 600
+              }
+            ],
+            "rating": 5.0,
+            "price_range": "$$",
+            "category": "foodie"
+          },
+          {
+            "id": "g3",
+            "name": "Insta Bar",
+            "address": "3 Main St, Austin, TX",
+            "latitude": 30.27,
+            "longitude": -97.74,
+            "website": "https://instagram.com/insta_bar",
+            "phone": null,
+            "instagram": "https://instagram.com/insta_bar",
+            "description": "",
+            "photos": [
+              {
+                "url": "places/g3/photos/p1",
+                "height": 400,
+                "width": 600
+              }
+            ],
+            "rating": 4.3,
+            "price_range": "$$$",
+            "category": "foodie"
+          },
+          {
+            "id": "g6",
+            "name": "Free Park Cafe",
+            "address": "6 Park Rd, Austin, TX",
+            "latitude": 30.1,
+            "longitude": -97.1,
+            "website": "https://freepark.example",
+            "phone": null,
+            "instagram": null,
+            "description": "",
+            "photos": [
+              {
+                "url": "places/g6/photos/p1",
+                "height": 400,
+                "width": 600
+              }
+            ],
+            "rating": null,
+            "price_range": "$",
+            "category": "foodie"
+          },
+          {
+            "id": "g7",
+            "name": "Roast House",
+            "address": "7 Bean St, Austin, TX",
+            "latitude": 30.2,
+            "longitude": -97.2,
+            "website": "https://roast.example",
+            "phone": null,
+            "instagram": "https://instagram.com/roast_house",
+            "description": "",
+            "photos": [
+              {
+                "url": "places/g7/photos/p1",
+                "height": 400,
+                "width": 600
+              }
+            ],
+            "rating": null,
+            "price_range": "$",
+            "category": "foodie"
+          }
+        ],
+        "total": 4,
+        "page": 1,
+        "per_page": 20,
+        "total_pages": 1
+      }
+    },
+    {
+      "name": "two categories interleaved",
+      "response": {
+        "success": true,
+        "places": [
+          {
+            "id": "m1",
+            "name": "Art Museum",
+            "address": "10 Art Ave, Austin, TX",
+            "latitude": 30.3,
+            "longitude": -97.3,
+            "website": "https://artmuseum.example",
+            "phone": null,
+            "instagram": null,
+            "description": "",
+            "photos": [
+              {
+                "url": "places/m1/photos/p1",
+                "height": 400,
+                "width": 600
+              }
+            ],
+            "rating": 4.8,
+            "price_range": null,
+            "category": "creative"
+          },
+          {
+            "id": "g6",
+            "name": "Free Park Cafe",
+            "address": "6 Park Rd, Austin, TX",
+            "latitude": 30.1,
+            "longitude": -97.1,
+            "website": "https://freepark.example",
+            "phone": null,
+            "instagram": null,
+            "description": "",
+            "photos": [
+              {
+                "url": "places/g6/photos/p1",
+                "height": 400,
+                "width": 600
+              }
+            ],
+            "rating": null,
+            "price_range": "$",
+            "category": "foodie"
+          },
+          {
+            "id": "m2",
+            "name": "Craft Lab",
+            "address": "11 Art Ave, Austin, TX",
+            "latitude": 30.31,
+            "longitude": -97.31,
+            "website": "https://craftlab.example",
+            "phone": null,
+            "instagram": "https://instagram.com/craft.lab_",
+            "description": "",
+            "photos": [
+              {
+                "url": "places/m2/photos/p1",
+                "height": 400,
+                "width": 600
+              }
+            ],
+            "rating": null,
+            "price_range": null,
+            "category": "creative"
+          }
+        ],
+        "total": 7,
+        "page": 2,
+        "per_page": 3,
+        "total_pages": 3
+      }
+    },
+    {
+      "name": "specific place, no category",
+      "response": {
+        "success": true,
+        "places": [
+          {
+            "id": "z1",
+            "name": "Zilker Park",
+            "address": "2100 Barton Springs Rd, Austin, TX",
+            "latitude": 30.26,
+            "longitude": -97.77,
+            "website": "https://zilker.example",
+            "phone": null,
+            "instagram": null,
+            "description": "",
+            "photos": [
+              {
+                "url": "places/z1/photos/p1",
+                "height": 400,
+                "width": 600
+              }
+            ],
+            "rating": null,
+            "price_range": null,
+            "category": ""
+          }
+        ],
+        "total": 1,
+        "page": 1,
+        "per_page": 20,
+        "total_pages": 1
+      }
+    },
+    {
+      "name": "page past the end clamps",
+      "response": {
+        "success": true,
+        "places": [
+          {
+            "id": "m2",
+            "name": "Craft Lab",
+            "address": "11 Art Ave, Austin, TX",
+            "latitude": 30.31,
+            "longitude": -97.31,
+            "website": "https://craftlab.example",
+            "phone": null,
+            "instagram": "https://instagram.com/craft.lab_",
+            "description": "",
+            "photos": [
+              {
+                "url": "places/m2/photos/p1",
+                "height": 400,
+                "width": 600
+              }
+            ],
+            "rating": null,
+            "price_range": null,
+            "category": "creative"
+          }
+        ],
+        "total": 3,
+        "page": 3,
+        "per_page": 1,
+        "total_pages": 3
+      }
+    }
+  ],
+  "validation": [
+    {
+      "name": "invalid category",
+      "status": 400,
+      "detail": "Invalid category 'nope'. Valid categories: ['thrill_seeking', 'super_chill', 'creative', 'pure_entertainment', 'foodie']"
+    },
+    {
+      "name": "nothing selected",
+      "status": 400,
+      "detail": "Please select a category, or use specific location names to search without one"
+    },
+    {
+      "name": "no location",
+      "status": 400,
+      "detail": "Please provide a location (city/zip), region, or specific location names"
+    },
+    {
+      "name": "blank location name only",
+      "status": 400,
+      "detail": "No valid search location provided"
+    }
+  ],
+  "instagram": [
+    "some_handle",
+    "another.one",
+    "legit_name",
+    null,
+    null,
+    null
+  ],
+  "export_csv": "Category,Name,Address,Latitude,Longitude,Website URL,Phone,Instagram,Description,Color,Rating,Price Range,Image 1,Image 2,Image 3,Is Staff Pick\r\nFoodie,\"Taco, \"\"Palace\"\"\",\"1 Main St,\nAustin\",30.0,-97.75,https://tacopalace.example,+1 512-555-0100,tacopalace,\"Great, \"\"tacos\"\"\",#F4A261,5.0,$$,https://lh3.googleusercontent.com/a,https://lh3.googleusercontent.com/b,,0\r\nCreative,Bare Minimum,2 Side St,0.0,0.0,,,,,#0F8FA8,,,,,,0\r\ncustom_thing,Handle Only,3 Other St,1.25,-2.5,,,handle_only,,,,,,,,0\r\nThrill Seeking,Four Photos,4 St,5.0,6.0,,,,,#E63946,4.5,,https://x/1,https://x/2,https://x/3,0\r\n",
+  "config": {
+    "protocol": {
+      "search_method": "Text Search API with category-specific keywords",
+      "deduplication": "Place ID + Name/Address combination",
+      "filtering": "Requires address, website, and photos",
+      "pagination": "20 results per page, max 60 total per search"
+    },
+    "categories": {
+      "thrill_seeking": {
+        "place_types": [
+          "amusement_park",
+          "bowling_alley",
+          "tourist_attraction"
+        ],
+        "keywords": "axe throwing OR go kart OR karting OR escape room OR rock climbing gym OR bouldering OR zipline OR aerial adventure park OR ropes course OR paintball OR airsoft OR skydiving OR indoor skydiving OR water park OR theme park OR surf lessons OR ski resort OR jet ski rental OR whitewater rafting OR ATV tours OR trampoline park OR laser tag"
+      },
+      "super_chill": {
+        "place_types": [
+          "spa",
+          "park",
+          "zoo",
+          "aquarium",
+          "tourist_attraction"
+        ],
+        "keywords": "spa OR massage OR yoga studio OR pilates OR meditation center OR botanical garden OR hiking trail OR nature preserve OR mini golf OR bike trail OR bike rental OR pier OR boardwalk OR fishing charter OR city tour OR walking tour OR arcade OR barcade OR aquarium OR zoo OR scenic cruise OR harbor cruise OR golf course OR driving range"
+      },
+      "creative": {
+        "place_types": [
+          "museum",
+          "art_gallery",
+          "tourist_attraction"
+        ],
+        "keywords": "paint and sip OR pottery class OR ceramics studio OR paint your own pottery OR candle making OR rug tufting OR tufting studio OR DIY workshop OR maker space OR art workshop OR woodworking class OR glassblowing class OR jewelry making OR flower bar OR immersive art OR interactive art exhibit OR selfie museum OR photo experience OR art museum OR art gallery"
+      },
+      "pure_entertainment": {
+        "place_types": [
+          "movie_theater",
+          "night_club",
+          "stadium",
+          "performing_arts_theater"
+        ],
+        "keywords": "IMAX OR movie theater OR live music venue OR concert venue OR comedy club OR comedy show OR performing arts center OR theater OR playhouse OR arena OR stadium OR sports venue OR event venue OR symphony OR opera"
+      },
+      "foodie": {
+        "place_types": [
+          "restaurant",
+          "cafe",
+          "bar",
+          "meal_takeaway"
+        ],
+        "keywords": "restaurant OR rooftop bar OR rooftop lounge OR brunch OR speakeasy OR cocktail bar OR wine bar OR winery OR vineyard OR brewery OR taproom OR distillery OR food tour OR tasting tour OR cooking class OR culinary school OR food hall OR public market OR dinner cruise OR dessert bar OR afternoon tea"
+      }
+    }
+  },
+  "categories": {
+    "categories": [
+      {
+        "id": "thrill_seeking",
+        "name": "Thrill Seeking",
+        "description": "Adventurous outings like rock climbing, theme parks, paintball"
+      },
+      {
+        "id": "super_chill",
+        "name": "Super Chill",
+        "description": "Relaxing items like spas, yoga, hiking trails, golf"
+      },
+      {
+        "id": "creative",
+        "name": "Creative",
+        "description": "Arts like museums, DIY arts and crafts locations, workshops"
+      },
+      {
+        "id": "pure_entertainment",
+        "name": "Pure Entertainment",
+        "description": "Venues for performing arts, theaters, concert venues"
+      },
+      {
+        "id": "foodie",
+        "name": "Foodie",
+        "description": "Restaurants, wineries, breweries, cooking classes"
+      }
+    ]
+  },
+  "regions": {
+    "regions": [
+      {
+        "id": "northeast",
+        "name": "Northeast Region",
+        "states": [
+          "Connecticut",
+          "Maine",
+          "Massachusetts",
+          "New Hampshire",
+          "Rhode Island",
+          "Vermont",
+          "New Jersey",
+          "New York",
+          "Pennsylvania"
+        ]
+      },
+      {
+        "id": "southeast",
+        "name": "Southeast Region",
+        "states": [
+          "Alabama",
+          "Florida",
+          "Georgia",
+          "Kentucky",
+          "Mississippi",
+          "North Carolina",
+          "South Carolina",
+          "Tennessee",
+          "Virginia",
+          "West Virginia",
+          "Maryland",
+          "Delaware",
+          "District of Columbia"
+        ]
+      },
+      {
+        "id": "midwest",
+        "name": "Midwest Region",
+        "states": [
+          "Illinois",
+          "Indiana",
+          "Michigan",
+          "Ohio",
+          "Wisconsin",
+          "Iowa",
+          "Kansas",
+          "Minnesota",
+          "Missouri",
+          "Nebraska",
+          "North Dakota",
+          "South Dakota"
+        ]
+      },
+      {
+        "id": "southwest",
+        "name": "Southwest Region",
+        "states": [
+          "Arizona",
+          "Arkansas",
+          "Louisiana",
+          "New Mexico",
+          "Oklahoma",
+          "Texas"
+        ]
+      },
+      {
+        "id": "west_coast",
+        "name": "West Coast Region",
+        "states": [
+          "California",
+          "Oregon",
+          "Washington",
+          "Nevada",
+          "Idaho",
+          "Montana",
+          "Utah",
+          "Wyoming",
+          "Colorado",
+          "Alaska",
+          "Hawaii"
+        ]
+      }
+    ]
+  }
+}

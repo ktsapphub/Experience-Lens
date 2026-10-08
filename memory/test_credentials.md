@@ -1,38 +1,9 @@
-# Test Credentials
+# Test credentials
 
-## Admin account (auto-seeded on backend startup)
-- Email: `mydatejar@gmail.com`
-- Password: `#Test1234`
-- Role: `admin`
-- Source: `ADMIN_EMAIL` / `ADMIN_PASSWORD` in `/app/backend/.env`. On every backend startup the `seed_admin_user` hook creates this user if missing, or rehashes the password if it changed.
+Credentials are no longer stored in the repository (the previous version of this file contained
+plaintext account passwords: treat those passwords as compromised and rotate them).
 
-## Legacy app user (still active)
-- Email: `joseph@centurion-pm.com`
-- Password: `#Test1234`
-
-## Running the pytest suite
-The auth tests (`/app/backend/tests/test_auth.py`) read credentials from environment variables to keep secrets out of VCS:
-
-```
-TEST_USER_EMAIL=joseph@centurion-pm.com TEST_USER_PASSWORD='#Test1234' \
-  pytest /app/backend/tests/test_auth.py
-```
-
-If those vars are not set the test module is skipped.
-
-## Auth endpoints (FastAPI, all prefixed with `/api`)
-- `POST /api/auth/register` → body `{ email, password }`. Returns `{ access_token, user }`. **Sets httpOnly cookie `mdc_access_token`.**
-- `POST /api/auth/login`    → body `{ email, password }`. Returns `{ access_token, user }`. **Sets httpOnly cookie.**
-- `POST /api/auth/logout`   → clears the cookie.
-- `GET  /api/auth/me`       → returns user. Auth is read from cookie first, then `Authorization: Bearer <token>` (test/API clients).
-
-## Protected endpoints (require auth)
-- `GET /api/history`, `GET /api/history/{id}`, `DELETE /api/history/{id}`, `DELETE /api/history`
-- `GET /api/search-history`
-- `PUT /api/config/category`, `POST /api/config/reset`
-
-## Frontend
-- Auth token is **never** stored in `localStorage` (XSS-resistant).
-- Browser-side flow uses an httpOnly cookie set by the backend; axios is configured with `withCredentials: true` so the cookie is sent automatically.
-- `/login` is the login + register page.
-- `/history` and `/config` are wrapped in `ProtectedRoute`; redirect to `/login` if `/auth/me` returns 401.
+- Production/staging admin: set the `ADMIN_EMAIL` and `ADMIN_PASSWORD` Worker secrets (see `.hub/launch.json`).
+  The Worker creates or updates that account on the first request after the secrets change.
+- Local development: put test values in `.dev.vars` (gitignored). See README.
+- Smoke test: `SMOKE_URL`, `SMOKE_EMAIL`, `SMOKE_PASSWORD` environment variables (`tests/smoke.test.js`).

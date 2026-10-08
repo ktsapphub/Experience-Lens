@@ -1,0 +1,13 @@
+{
+  "name": "experiencelens",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "cd frontend && npx --yes yarn@1.22.22 install --non-interactive && INLINE_RUNTIME_CHUNK=false GENERATE_SOURCEMAP=false CI=false npx --yes yarn@1.22.22 build",
+    "dev": "wrangler dev",
+    "test": "node --test \"tests/*.test.js\""
+  },
+  "devDependencies": {
+    "wrangler": "^4.40.0"
+  }
+}
