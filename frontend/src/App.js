@@ -81,7 +81,7 @@ const saveSeenLocations = (ids) => {
   }
 };
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || "";
 const API = `${BACKEND_URL}/api`;
 
 // Category configuration with tooltips
@@ -688,19 +688,25 @@ function SearchPage() {
 
     try {
       const urls = targets.map(p => ({ id: p.id, url: p.website }));
-      const resp = await axios.post(`${API}/shorten-links`, { urls });
-      if (resp.data.success) {
-        const newState = {};
-        resp.data.results.forEach(r => {
-          newState[r.id] = {
-            status: r.success ? 'success' : 'error',
-            short_url: r.short_url,
-            error: r.error,
-          };
-        });
-        setShortLinks(prev => ({ ...prev, ...newState }));
-        toast.success(`Shortened ${resp.data.shortened}/${resp.data.total} links`);
+      // Chunked: the Worker caps each request to stay inside Cloudflare's subrequest limit.
+      const CHUNK = 25;
+      let shortened = 0;
+      for (let i = 0; i < urls.length; i += CHUNK) {
+        const resp = await axios.post(`${API}/shorten-links`, { urls: urls.slice(i, i + CHUNK) });
+        if (resp.data.success) {
+          const newState = {};
+          resp.data.results.forEach(r => {
+            newState[r.id] = {
+              status: r.success ? 'success' : 'error',
+              short_url: r.short_url,
+              error: r.error,
+            };
+          });
+          setShortLinks(prev => ({ ...prev, ...newState }));
+          shortened += resp.data.shortened;
+        }
       }
+      toast.success(`Shortened ${shortened}/${urls.length} links`);
     } catch (err) {
       targets.forEach(p => {
         setShortLinks(prev => ({ ...prev, [p.id]: { status: 'error', short_url: null, error: 'Request failed' } }));

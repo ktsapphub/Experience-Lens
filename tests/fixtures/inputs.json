@@ -1,0 +1,64 @@
+{
+  "google": {
+    "foodie in Austin": [
+      {"id": "g1", "displayName": {"text": "Taco, \"Palace\""}, "formattedAddress": "1 Main St, Austin, TX", "location": {"latitude": 30.0, "longitude": -97.75}, "websiteUri": "https://tacopalace.example", "internationalPhoneNumber": "+1 512-555-0100", "rating": 5.0, "priceLevel": "PRICE_LEVEL_MODERATE", "photos": [{"name": "places/g1/photos/p1"}, {"name": "places/g1/photos/p2"}, {"name": "places/g1/photos/p3"}, {"name": "places/g1/photos/p4"}], "editorialSummary": {"text": "Great tacos\nand more"}},
+      {"id": "g2", "displayName": {"text": "No Photo Cafe"}, "formattedAddress": "2 Main St", "location": {"latitude": 1.5, "longitude": 2.5}, "websiteUri": "https://nophoto.example", "photos": []},
+      {"id": "g3", "displayName": {"text": "Insta Bar"}, "formattedAddress": "3 Main St, Austin, TX", "location": {"latitude": 30.27, "longitude": -97.74}, "websiteUri": "https://instagram.com/insta_bar", "rating": 4.3, "priceLevel": "PRICE_LEVEL_VERY_EXPENSIVE", "photos": [{"name": "places/g3/photos/p1"}]},
+      {"id": "g4", "formattedAddress": "Address not available", "websiteUri": "https://x.example", "photos": [{"name": "places/g4/photos/p1"}]}
+    ],
+    "restaurant in Austin": [
+      {"id": "g1", "displayName": {"text": "Taco, \"Palace\""}, "formattedAddress": "1 Main St, Austin, TX", "location": {"latitude": 30.0, "longitude": -97.75}, "websiteUri": "https://tacopalace.example", "photos": [{"name": "places/g1/photos/p1"}]},
+      {"id": "g5", "displayName": {"text": "Taco, \"Palace\""}, "formattedAddress": "1 Main St, Austin, TX", "websiteUri": "https://dup-by-name.example", "photos": [{"name": "places/g5/photos/p1"}]},
+      {"id": "g6", "displayName": {"text": "Free Park Cafe"}, "formattedAddress": "6 Park Rd, Austin, TX", "location": {"latitude": 30.1, "longitude": -97.1}, "websiteUri": "https://freepark.example", "priceLevel": "PRICE_LEVEL_FREE", "photos": [{"name": "places/g6/photos/p1"}]}
+    ],
+    "cafe in Austin": [
+      {"id": "g7", "displayName": {"text": "Roast House"}, "formattedAddress": "7 Bean St, Austin, TX", "location": {"latitude": 30.2, "longitude": -97.2}, "websiteUri": "https://roast.example", "priceLevel": "PRICE_LEVEL_INEXPENSIVE", "photos": [{"name": "places/g7/photos/p1"}]}
+    ],
+    "museum in Austin": [
+      {"id": "m1", "displayName": {"text": "Art Museum"}, "formattedAddress": "10 Art Ave, Austin, TX", "location": {"latitude": 30.3, "longitude": -97.3}, "websiteUri": "https://artmuseum.example", "rating": 4.8, "photos": [{"name": "places/m1/photos/p1"}]},
+      {"id": "m2", "displayName": {"text": "Craft Lab"}, "formattedAddress": "11 Art Ave, Austin, TX", "location": {"latitude": 30.31, "longitude": -97.31}, "websiteUri": "https://craftlab.example", "photos": [{"name": "places/m2/photos/p1"}]}
+    ],
+    "art_gallery in Austin": [],
+    "creative in Austin": [
+      {"id": "m3", "displayName": {"text": "Clay Studio"}, "formattedAddress": "12 Art Ave, Austin, TX", "location": {"latitude": 30.32, "longitude": -97.32}, "websiteUri": "https://claystudio.example", "rating": 4.1, "photos": [{"name": "places/m3/photos/p1"}, {"name": "places/m3/photos/p2"}]}
+    ],
+    "Zilker Park": [
+      {"id": "z1", "displayName": {"text": "Zilker Park"}, "formattedAddress": "2100 Barton Springs Rd, Austin, TX", "location": {"latitude": 30.26, "longitude": -97.77}, "websiteUri": "https://zilker.example", "photos": [{"name": "places/z1/photos/p1"}]}
+    ]
+  },
+  "html": {
+    "https://tacopalace.example": "<a href=\"https://www.instagram.com/tacopalace/\">IG</a>",
+    "https://roast.example": "<a href='https://instagram.com/p/abc'>post</a> <a href=\"https://instagram.com/Roast_House\">IG</a>",
+    "https://artmuseum.example": "<html>no social links</html>",
+    "https://craftlab.example": "visit instagram.com/explore or instagram.com/craft.lab_ today",
+    "https://freepark.example": "nothing",
+    "https://zilker.example": "<a href=\"https://instagram.com/reels/\">x</a>"
+  },
+  "searches": [
+    {"name": "single category + city", "body": {"categories": ["foodie"], "location": "Austin"}, "keywords": {"foodie": "foodie"}},
+    {"name": "legacy single category field", "body": {"category": "foodie", "location": "Austin"}},
+    {"name": "two categories interleaved", "body": {"categories": ["foodie", "creative"], "location": "Austin", "per_page": 3, "page": 2}},
+    {"name": "specific place, no category", "body": {"location_names": ["Zilker Park"]}},
+    {"name": "page past the end clamps", "body": {"categories": ["creative"], "location": "Austin", "per_page": 1, "page": 99}}
+  ],
+  "validation": [
+    {"name": "invalid category", "body": {"categories": ["nope"], "location": "Austin"}},
+    {"name": "nothing selected", "body": {"location": "Austin"}},
+    {"name": "no location", "body": {"categories": ["foodie"]}},
+    {"name": "blank location name only", "body": {"location_names": ["   "]}}
+  ],
+  "exportPlaces": [
+    {"id": "e1", "name": "Taco, \"Palace\"", "address": "1 Main St,\nAustin", "latitude": 30, "longitude": -97.75, "website": "https://tacopalace.example", "phone": "+1 512-555-0100", "instagram": "https://instagram.com/TacoPalace/", "description": "Great, \"tacos\"", "photos": [{"url": "https://lh3.googleusercontent.com/a"}, {"url": "https://lh3.googleusercontent.com/b"}], "rating": 5.0, "price_range": "$$", "category": "foodie"},
+    {"id": "e2", "name": "Bare Minimum", "address": "2 Side St", "latitude": 0, "longitude": 0, "category": "Creative"},
+    {"id": "e3", "name": "Handle Only", "address": "3 Other St", "latitude": 1.25, "longitude": -2.5, "instagram": "@handle_only", "rating": 0, "photos": [], "category": "custom_thing"},
+    {"id": "e4", "name": "Four Photos", "address": "4 St", "latitude": 5, "longitude": 6, "rating": 4.5, "category": "thrill_seeking", "photos": [{"url": "https://x/1"}, {"url": "https://x/2"}, {"url": "https://x/3"}]}
+  ],
+  "instagramSamples": [
+    "<a href=\"https://www.instagram.com/some_handle/\">",
+    "<a href='http://instagram.com/Another.One'>x</a>",
+    "see instagram.com/explore and instagram.com/legit_name",
+    "https://instagram.com/aVeryLongHandleThatExceedsThirtyCharacters123",
+    "no links here",
+    "https://instagram.com/p/XYZ and https://instagram.com/reel/ABC"
+  ]
+}
