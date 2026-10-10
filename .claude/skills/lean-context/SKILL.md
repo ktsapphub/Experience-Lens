@@ -19,6 +19,12 @@ Goal: best output for the fewest tokens, and no run starts from zero.
 - Prefer one targeted test run over full suites when iterating; run the full relevant suite once at the end.
 - Use subagents (Task) for independent parallel stages; give each a narrow brief, not the whole context.
 
+## Caveman mode for internal writing
+- HANDOFF, summary, subagent briefs, plans and notes: drop articles, filler and pleasantries. Fragments OK. Keep every fact, path, number, command, URL, decision.
+- Subagent brief = goal + files + done-check. Never paste the whole context.
+- Don't echo file contents or long logs back. Quote the 3 lines that matter.
+- Deliverables are the exception: website copy, UI text, docs, decks, dashboards and emails ship complete and polished.
+
 ## End of run (required)
 1. Rewrite `.claude/HANDOFF.md` (max 150 lines):
    - Current state (what works, what's deployed where)
