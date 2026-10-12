@@ -8,8 +8,8 @@ on the same origin (no CORS, no backend URL). Data is in Cloudflare D1.
 
 | Environment | URL | Worker | D1 database |
 |---|---|---|---|
-| Production | https://experiencelens.ktsapps.com | `experiencelens` | `experiencelens-db` |
-| Staging | https://experiencelens-staging.ktsapps.com | `experiencelens-staging` | `experiencelens-staging-db` |
+| Production | https://explens.ktsapps.com | `experiencelens` | `experiencelens-db` |
+| Staging | https://explens-staging.ktsapps.com | `experiencelens-staging` | `experiencelens-staging-db` |
 
 ## Layout
 
@@ -65,7 +65,7 @@ Secrets are Worker secrets, never in code (`npx wrangler secret put NAME [--env 
 | `ADMIN_EMAIL`, `ADMIN_PASSWORD` | secret | yes | Admin account, created/updated on first request |
 | `GOOGLE_PLACES_API_KEY` | secret | yes | Places API (New); stays server-side (photos go through `/api/places/photo`) |
 | `SHORTIO_API_KEY`, `SHORTIO_DOMAIN` | secret | no | Link shortening |
-| `GEMINI_API_KEY` | secret | no | AI descriptions (replaces the old Emergent LLM key) |
+| `GEMINI_API_KEY` | secret | no | AI descriptions |
 | `ALLOW_REGISTRATION` | var | no | `"true"` enables self-service sign-up (default `"false"`) |
 | `SUBREQUEST_BUDGET` | var | no | Outbound requests per API call (default 40; free plan limit 50) |
 | `CORS_ORIGINS` | var | no | Extra origins allowed to call the API with credentials (default none) |

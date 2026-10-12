@@ -5,7 +5,7 @@ import uuid
 import pytest
 import requests
 
-BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://maps-scraper-lab.preview.emergentagent.com").rstrip("/")
+BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://explens.ktsapps.com").rstrip("/")
 API = f"{BASE_URL}/api"
 # Test credentials must be supplied via environment to avoid leaking them in VCS.
 # Local development can populate /app/memory/test_credentials.md (read by the test runner).

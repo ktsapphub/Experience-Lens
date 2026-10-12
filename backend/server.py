@@ -1051,7 +1051,7 @@ async def get_search_history(limit: int = Query(default=10, le=100), current_use
 
 # ======== AI DESCRIPTION GENERATION ========
 
-EMERGENT_LLM_KEY = os.environ.get('EMERGENT_LLM_KEY', '')
+GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
 
 
 class GenerateDescRequest(BaseModel):
@@ -1061,10 +1061,8 @@ class GenerateDescRequest(BaseModel):
 @api_router.post("/generate-descriptions")
 async def generate_descriptions(request: GenerateDescRequest):
     """Generate short descriptions for locations missing them, using Gemini."""
-    if not EMERGENT_LLM_KEY:
+    if not GEMINI_API_KEY:
         raise HTTPException(status_code=500, detail="LLM key not configured")
-
-    from emergentintegrations.llm.chat import LlmChat, UserMessage
 
     # Run up to 10 LLM calls concurrently and cap each at 25s so one slow
     # request can never block the entire batch (avoids ingress timeout).
@@ -1080,23 +1078,24 @@ async def generate_descriptions(request: GenerateDescRequest):
 
         async with semaphore:
             try:
-                chat = LlmChat(
-                    api_key=EMERGENT_LLM_KEY,
-                    session_id=f"desc-{uuid.uuid4()}",
-                    system_message="You are a concise location description writer. Write engaging, factual mini-descriptions for businesses and places. Keep descriptions under 500 characters. Output the description text directly with no quotes."
-                ).with_model("gemini", "gemini-2.5-flash")
-
                 prompt = f"Write a short, engaging description (max 500 chars) for: {name}"
                 if address:
                     prompt += f" at {address}"
                 if cat:
                     prompt += f" (Category: {cat})"
 
-                response = await asyncio.wait_for(
-                    chat.send_message(UserMessage(text=prompt)),
-                    timeout=25.0,
-                )
-                desc = (response or "").strip().strip('"').strip("'")
+                async with httpx.AsyncClient(timeout=25.0) as client:
+                    res = await client.post(
+                        "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+                        headers={"x-goog-api-key": GEMINI_API_KEY},
+                        json={
+                            "systemInstruction": {"parts": [{"text": "You are a concise location description writer. Write engaging, factual mini-descriptions for businesses and places. Keep descriptions under 500 characters. Output the description text directly with no quotes."}]},
+                            "contents": [{"parts": [{"text": prompt}]}],
+                        },
+                    )
+                    res.raise_for_status()
+                parts = res.json().get("candidates", [{}])[0].get("content", {}).get("parts", [])
+                desc = "".join(p.get("text", "") for p in parts).strip().strip('"').strip("'")
                 if not desc:
                     return {"id": place_id, "description": None, "success": False, "error": "Empty response"}
                 if len(desc) > 500:

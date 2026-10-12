@@ -9,7 +9,7 @@
     "not_found_handling": "single-page-application",
     "run_worker_first": ["/api/*"]
   },
-  "routes": [{ "pattern": "experiencelens.ktsapps.com", "custom_domain": true }],
+  "routes": [{ "pattern": "explens.ktsapps.com", "custom_domain": true }],
   "observability": { "enabled": true },
   // Non-secret config. Secrets (JWT_SECRET, GOOGLE_PLACES_API_KEY, ...) are Worker secrets: see .hub/launch.json.
   "vars": {
@@ -24,7 +24,7 @@
     "staging": {
       "name": "experiencelens-staging",
       "build": { "command": "npm run build" },
-      "routes": [{ "pattern": "experiencelens-staging.ktsapps.com", "custom_domain": true }],
+      "routes": [{ "pattern": "explens-staging.ktsapps.com", "custom_domain": true }],
       "observability": { "enabled": true },
       "vars": {
         "ALLOW_REGISTRATION": "false",
