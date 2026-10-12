@@ -41,7 +41,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         if: steps.cfg.outputs.has == '1'
-        with: { node-version: "20" }
+        with: { node-version: "22" }
 
       - name: "Ines · deploy to ${{ env.TARGET }}"
         id: deploy
