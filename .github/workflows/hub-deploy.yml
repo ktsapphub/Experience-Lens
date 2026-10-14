@@ -32,7 +32,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: "Ines · check deploy config"
+      - name: "Vision · check deploy config"
         id: cfg
         shell: bash
         run: |
@@ -41,9 +41,9 @@ jobs:
 
       - uses: actions/setup-node@v4
         if: steps.cfg.outputs.has == '1'
-        with: { node-version: "22" }
+        with: { node-version: "20" }
 
-      - name: "Ines · deploy to ${{ env.TARGET }}"
+      - name: "Vision · deploy to ${{ env.TARGET }}"
         id: deploy
         if: steps.cfg.outputs.has == '1' && env.CLOUDFLARE_API_TOKEN != ''
         shell: bash
