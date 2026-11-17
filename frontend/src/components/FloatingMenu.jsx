@@ -17,6 +17,8 @@ import {
   LogOut,
   User as UserIcon,
   Compass,
+  ShieldCheck,
+  Gauge,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 function NavItem({ path, label, icon: Icon, active, onClick }) {
@@ -116,6 +118,9 @@ export default function FloatingMenu() {
             <NavItem path="/search" label="Search" icon={Search} active={isActive("/search")} onClick={go} />
             <NavItem path="/history" label="History" icon={Clock} active={isActive("/history")} onClick={go} />
             <NavItem path="/config" label="Config" icon={Settings} active={isActive("/config")} onClick={go} />
+            {user?.role === "admin" && (
+              <NavItem path="/admin" label="Admin" icon={ShieldCheck} active={isActive("/admin")} onClick={go} />
+            )}
           </nav>
 
           <div className="border-t border-border p-4">
@@ -136,6 +141,12 @@ export default function FloatingMenu() {
                   <UserIcon className="w-3.5 h-3.5" />
                   <span className="truncate">{user.email}</span>
                 </div>
+                {user.runs && !user.runs.unlimited && (
+                  <div className="flex items-center gap-2 px-1 pb-2 text-xs font-medium" data-testid="menu-runs-left">
+                    <Gauge className="w-3.5 h-3.5 text-primary" />
+                    {user.runs.runs_left} of {user.runs.runs_limit} runs left
+                  </div>
+                )}
                 <Button
                   variant="outline"
                   className="w-full justify-start"

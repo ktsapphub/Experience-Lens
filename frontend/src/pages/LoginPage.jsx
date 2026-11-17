@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
-import { Loader2, Map, LogIn, UserPlus } from "lucide-react";
+import { Loader2, Map, LogIn, UserPlus, KeyRound } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -21,7 +21,7 @@ function formatApiErrorDetail(detail) {
 }
 
 export default function LoginPage() {
-  const { login, register } = useAuth();
+  const { login, register, resetPassword } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   // After sign-in, always land the user in the search tool by default. If they
@@ -32,7 +32,8 @@ export default function LoginPage() {
     ? location.state.from
     : "/search";
 
-  const [mode, setMode] = useState("login"); // "login" | "register"
+  const [mode, setMode] = useState("login"); // "login" | "register" | "reset"
+  const [keyword, setKeyword] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -40,8 +41,8 @@ export default function LoginPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!email || !password) {
-      setError("Email and password are required");
+    if (!email || !password || (mode === "reset" && !keyword)) {
+      setError(mode === "reset" ? "Email, keyword and a new password are required" : "Email and password are required");
       return;
     }
     setError("");
@@ -50,6 +51,9 @@ export default function LoginPage() {
       if (mode === "login") {
         await login(email, password);
         toast.success("Welcome back");
+      } else if (mode === "reset") {
+        await resetPassword(email, keyword, password);
+        toast.success("Password updated. You're signed in.");
       } else {
         await register(email, password);
         toast.success("Account created");
@@ -79,12 +83,14 @@ export default function LoginPage() {
         </Link>
 
         <h2 className="text-2xl font-semibold mb-1" style={{ fontFamily: "IBM Plex Sans, sans-serif" }}>
-          {mode === "login" ? "Sign in" : "Create an account"}
+          {mode === "login" ? "Sign in" : mode === "reset" ? "Reset your password" : "Create an account"}
         </h2>
         <p className="text-sm text-muted-foreground mb-6">
           {mode === "login"
             ? "Access your search history and configuration."
-            : "Get started in seconds."}
+            : mode === "reset"
+              ? "Enter the reset keyword and choose a new password."
+              : "Get started in seconds. New accounts include 10 free searches."}
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-4" data-testid="auth-form">
@@ -102,8 +108,24 @@ export default function LoginPage() {
               data-testid="email-input"
             />
           </div>
+          {mode === "reset" && (
+            <div className="space-y-2">
+              <Label htmlFor="keyword">Reset keyword</Label>
+              <Input
+                id="keyword"
+                type="password"
+                value={keyword}
+                onChange={(e) => setKeyword(e.target.value)}
+                placeholder="Keyword or phrase"
+                autoComplete="off"
+                required
+                className="h-11"
+                data-testid="keyword-input"
+              />
+            </div>
+          )}
           <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
+            <Label htmlFor="password">{mode === "reset" ? "New password" : "Password"}</Label>
             <Input
               id="password"
               type="password"
@@ -111,6 +133,7 @@ export default function LoginPage() {
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
               autoComplete={mode === "login" ? "current-password" : "new-password"}
+              minLength={mode === "login" ? undefined : 8}
               required
               className="h-11"
               data-testid="password-input"
@@ -135,16 +158,33 @@ export default function LoginPage() {
             {loading ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                {mode === "login" ? "Signing in..." : "Creating account..."}
+                {mode === "login" ? "Signing in..." : mode === "reset" ? "Updating password..." : "Creating account..."}
               </>
             ) : (
               <>
-                {mode === "login" ? <LogIn className="w-4 h-4 mr-2" /> : <UserPlus className="w-4 h-4 mr-2" />}
-                {mode === "login" ? "Sign in" : "Create account"}
+                {mode === "login" ? <LogIn className="w-4 h-4 mr-2" /> : mode === "reset" ? <KeyRound className="w-4 h-4 mr-2" /> : <UserPlus className="w-4 h-4 mr-2" />}
+                {mode === "login" ? "Sign in" : mode === "reset" ? "Set new password" : "Create account"}
               </>
             )}
           </Button>
         </form>
+
+        {mode === "login" && (
+          <div className="text-center mt-4">
+            <button
+              type="button"
+              onClick={() => {
+                setMode("reset");
+                setPassword("");
+                setError("");
+              }}
+              className="text-sm text-muted-foreground hover:text-primary hover:underline"
+              data-testid="forgot-password"
+            >
+              Forgot password?
+            </button>
+          </div>
+        )}
 
         <div className="text-center mt-6 text-sm text-muted-foreground">
           {mode === "login" ? (
