@@ -14,25 +14,42 @@ export function AuthProvider({ children }) {
   // null = checking, false = unauthenticated, object = authenticated user
   const [user, setUser] = useState(null);
 
-  // Verify existing session on mount (cookie is sent automatically).
+  // Re-read the session (role + run countdown). Cookie is sent automatically.
+  const refresh = useCallback(async () => {
+    try {
+      const res = await axios.get(`${API}/auth/me`);
+      setUser(res.data);
+      return res.data;
+    } catch {
+      setUser(false);
+      return false;
+    }
+  }, []);
+
   useEffect(() => {
-    axios
-      .get(`${API}/auth/me`)
-      .then((res) => setUser(res.data))
-      .catch(() => setUser(false));
+    refresh();
+  }, [refresh]);
+
+  // Update just the run countdown after a search or a request, without another round trip.
+  const setRuns = useCallback((runs) => {
+    if (runs) setUser((u) => (u ? { ...u, runs } : u));
   }, []);
 
   const login = useCallback(async (email, password) => {
-    const res = await axios.post(`${API}/auth/login`, { email, password });
-    setUser(res.data.user);
-    return res.data.user;
-  }, []);
+    await axios.post(`${API}/auth/login`, { email, password });
+    return refresh();
+  }, [refresh]);
 
   const register = useCallback(async (email, password) => {
-    const res = await axios.post(`${API}/auth/register`, { email, password });
-    setUser(res.data.user);
-    return res.data.user;
-  }, []);
+    await axios.post(`${API}/auth/register`, { email, password });
+    return refresh();
+  }, [refresh]);
+
+  // Keyword reset: sets the new password and signs the user in.
+  const resetPassword = useCallback(async (email, keyword, newPassword) => {
+    await axios.post(`${API}/auth/reset-password`, { email, keyword, new_password: newPassword });
+    return refresh();
+  }, [refresh]);
 
   const logout = useCallback(async () => {
     try {
@@ -46,7 +63,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout }}>
+    <AuthContext.Provider value={{ user, login, register, logout, refresh, setRuns, resetPassword }}>
       {children}
     </AuthContext.Provider>
   );

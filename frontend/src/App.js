@@ -59,7 +59,9 @@ import OperationProgress from "@/components/OperationProgress";
 import SearchFilters from "@/components/SearchFilters";
 import FloatingMenu from "@/components/FloatingMenu";
 import LandingPage from "@/pages/LandingPage";
-import { AuthProvider } from "@/contexts/AuthContext";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import RunsBanner from "@/components/RunsBanner";
+import AdminPage from "@/pages/AdminPage";
 
 // Helper to get seen locations from localStorage
 const getSeenLocations = () => {
@@ -618,6 +620,7 @@ function Pagination({ page, totalPages, onPageChange, disabled }) {
 
 // Search Page Component
 function SearchPage() {
+  const { setRuns, refresh } = useAuth();
   const [categories, setCategories] = useState([]);
   const [searchTab, setSearchTab] = useState("location");
   const [location, setLocation] = useState("");
@@ -927,6 +930,7 @@ function SearchPage() {
         per_page: 999
       });
 
+      setRuns(response.data.runs);
       if (response.data.success) {
         const all = response.data.places || [];
         const total = all.length;
@@ -948,6 +952,7 @@ function SearchPage() {
       }
     } catch (error) {
       console.error("Search error:", error);
+      if (error.response?.status === 402 || error.response?.status === 401) refresh(); // out of runs / signed out
       const message = error.response?.data?.detail || "Failed to search locations";
       toast.error(message);
       setPlaces([]);
@@ -955,7 +960,7 @@ function SearchPage() {
     } finally {
       setLoading(false);
     }
-  }, [categories, location, region, locationNames, searchTab, markAsSeen]);
+  }, [categories, location, region, locationNames, searchTab, markAsSeen, setRuns, refresh]);
 
   // ---- Re-run from /history ----
   // When the user clicks "Re-run & Transform" on a history entry, HistoryPage navigates
@@ -1177,6 +1182,9 @@ function SearchPage() {
         </div>
       </header>
 
+      <div className="max-w-6xl mx-auto px-6 pt-6">
+        <RunsBanner />
+      </div>
 
       {/* Search Filters — categories, tabs, inputs, Search + Restart buttons */}
       <SearchFilters
@@ -1433,7 +1441,22 @@ function App() {
         <FloatingMenu />
         <Routes>
           <Route path="/" element={<LandingPage />} />
-          <Route path="/search" element={<SearchPage />} />
+          <Route
+            path="/search"
+            element={
+              <ProtectedRoute>
+                <SearchPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute>
+                <AdminPage />
+              </ProtectedRoute>
+            }
+          />
           <Route path="/login" element={<LoginPage />} />
           <Route
             path="/history"

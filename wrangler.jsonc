@@ -11,9 +11,10 @@
   },
   "routes": [{ "pattern": "explens.ktsapps.com", "custom_domain": true }],
   "observability": { "enabled": true },
-  // Non-secret config. Secrets (JWT_SECRET, GOOGLE_PLACES_API_KEY, ...) are Worker secrets: see .hub/launch.json.
+  // Non-secret config. Secrets (JWT_SECRET, RESET_KEYWORD, GOOGLE_PLACES_API_KEY, ...) are Worker secrets.
+  // Optional vars: FREE_RUNS (default 10) and RUN_TOPUP (default 5) for non-admin search allowances.
   "vars": {
-    "ALLOW_REGISTRATION": "false",
+    "ALLOW_REGISTRATION": "true",
     "CORS_ORIGINS": "",
     "SUBREQUEST_BUDGET": "40"
   },
@@ -27,7 +28,7 @@
       "routes": [{ "pattern": "explens-staging.ktsapps.com", "custom_domain": true }],
       "observability": { "enabled": true },
       "vars": {
-        "ALLOW_REGISTRATION": "false",
+        "ALLOW_REGISTRATION": "true",
         "CORS_ORIGINS": "",
         "SUBREQUEST_BUDGET": "40"
       },

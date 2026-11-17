@@ -13,6 +13,8 @@ const env = {
   CORS_ORIGINS: "https://other.example",
 };
 const call = (path, init = {}) => worker.fetch(new Request(`https://app.test${path}`, init), env);
+const postRaw = (path, body, headers = {}) =>
+  call(path, { method: "POST", headers: { "content-type": "application/json", ...headers }, body: JSON.stringify(body) });
 const post = (path, body, headers = {}) =>
   call(path, { method: "POST", headers: { "content-type": "application/json", ...headers }, body: JSON.stringify(body) });
 const bearer = (t) => ({ authorization: `Bearer ${t}` });
@@ -122,6 +124,9 @@ test("history: list, limit validation, 404, delete", async () => {
 test("search input validation (before any outbound call)", async () => {
   env.GOOGLE_PLACES_API_KEY = "k";
   globalThis.fetch = async () => assert.fail("no outbound request expected");
+  assert.equal((await postRaw("/api/places/search", { categories: ["foodie"], location: "x" })).status, 401);
+  const { body: a } = await login("admin@example.com", "AdminPass123");
+  const post = (path, body) => postRaw(path, body, bearer(a.access_token));
   assert.equal((await post("/api/places/search", { categories: "foodie", location: "x" })).status, 422);
   assert.equal((await post("/api/places/search", { categories: ["foodie"], location: "x".repeat(300) })).status, 422);
   assert.equal((await post("/api/places/search", { categories: ["foodie"], location: "x", per_page: 0 })).status, 422);

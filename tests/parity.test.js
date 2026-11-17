@@ -12,8 +12,19 @@ const load = (f) => JSON.parse(readFileSync(new URL(`./fixtures/${f}`, import.me
 const inputs = load("inputs.json");
 const expected = load("expected.json");
 
-const env = { DB: createD1(), JWT_SECRET: "x".repeat(40), GOOGLE_PLACES_API_KEY: "test-key", SUBREQUEST_BUDGET: "40" };
+const env = {
+  DB: createD1(), JWT_SECRET: "x".repeat(40), GOOGLE_PLACES_API_KEY: "test-key", SUBREQUEST_BUDGET: "40",
+  ADMIN_EMAIL: "admin@example.com", ADMIN_PASSWORD: "AdminPass123",
+};
 const call = (path, init) => worker.fetch(new Request(`https://app.test${path}`, init), env);
+// Search needs a signed-in user; the admin is unmetered so parity output is unaffected.
+let adminToken;
+const search = async (body) => {
+  adminToken ||= (await (await call("/api/auth/login", {
+    method: "POST", body: JSON.stringify({ email: env.ADMIN_EMAIL, password: env.ADMIN_PASSWORD }),
+  })).json()).access_token;
+  return call("/api/places/search", { method: "POST", headers: { authorization: `Bearer ${adminToken}` }, body: JSON.stringify(body) });
+};
 
 // Mock every outbound request: Google Places text search + business websites.
 const googleLookup = (query) => {
@@ -44,9 +55,10 @@ const normPlace = (p) => ({
 for (const c of expected.searches) {
   test(`search parity: ${c.name}`, async () => {
     const body = inputs.searches.find((s) => s.name === c.name).body;
-    const res = await call("/api/places/search", { method: "POST", body: JSON.stringify(body) });
+    const res = await search(body);
     assert.equal(res.status, 200);
-    const got = await res.json();
+    const { runs, ...got } = await res.json();
+    assert.equal(runs.unlimited, true);
     assert.deepEqual({ ...got, places: got.places.map(normPlace) }, c.response);
   });
 }
@@ -54,7 +66,7 @@ for (const c of expected.searches) {
 for (const c of expected.validation) {
   test(`validation parity: ${c.name}`, async () => {
     const body = inputs.validation.find((s) => s.name === c.name).body;
-    const res = await call("/api/places/search", { method: "POST", body: JSON.stringify(body) });
+    const res = await search(body);
     assert.equal(res.status, c.status);
     assert.equal((await res.json()).detail, c.detail);
   });
