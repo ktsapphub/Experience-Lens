@@ -221,11 +221,11 @@ export function paginate(places, page, perPage) {
   };
 }
 
-export async function persistHistory(env, req, places) {
+export async function persistHistory(env, req, places, userId = null) {
   const method = req.region ? "region" : req.locationNames.length ? "specific" : "location";
   await env.DB.prepare(
-    `INSERT INTO search_history (id, category, search_method, location, region, location_names, results_count, results, timestamp)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO search_history (id, category, search_method, location, region, location_names, results_count, results, timestamp, user_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   )
     .bind(
       crypto.randomUUID(),
@@ -237,6 +237,7 @@ export async function persistHistory(env, req, places) {
       places.length,
       JSON.stringify(places.map((p) => ({ name: p.name, address: p.address, website: p.website }))),
       new Date().toISOString(),
+      userId,
     )
     .run();
 }

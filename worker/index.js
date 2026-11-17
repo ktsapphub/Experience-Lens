@@ -1,13 +1,13 @@
 // Experience Lens: one Worker = static frontend (ASSETS) + /api. Port of backend/server.py (FastAPI + MongoDB).
 import {
-  cookieHeader, credentials, currentUser, hashPassword, requireAdmin, seedAdmin, signToken, verifyPassword,
+  cookieHeader, credentials, currentUser, hashPassword, keywordMatches, requireAdmin, seedAdmin, signToken, verifyPassword,
 } from "./auth.js";
 import { DEFAULT_CATEGORY_KEYWORDS, DEFAULT_CATEGORY_TYPES, US_REGIONS } from "./constants.js";
 import { generateDescriptions, shortenLinks, shortenStatus } from "./integrations.js";
 import {
   exportCsv, normalizeSearchRequest, paginate, persistHistory, photoProxy, searchPlaces, validatePlaces,
 } from "./places.js";
-import { HttpError, int, isObj, json, rateLimit, readJson, str } from "./util.js";
+import { HttpError, int, isObj, json, num, rateLimit, readJson, str } from "./util.js";
 
 const APP_VERSION = "1.0.0";
 const API_VERSION = "Google Places API (New) v1";
@@ -21,7 +21,27 @@ const SCHEMA = [
     location_names TEXT, results_count INTEGER, results TEXT, timestamp TEXT NOT NULL)`,
   `CREATE INDEX IF NOT EXISTS idx_history_ts ON search_history (timestamp DESC)`,
   `CREATE TABLE IF NOT EXISTS status_checks (id TEXT PRIMARY KEY, client_name TEXT NOT NULL, timestamp TEXT NOT NULL)`,
+  `CREATE TABLE IF NOT EXISTS run_requests (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'pending',
+    created_at TEXT NOT NULL, resolved_at TEXT)`,
+  `CREATE INDEX IF NOT EXISTS idx_run_requests_status ON run_requests (status, created_at)`,
 ];
+
+// Additive column migrations for databases created before these existed. "duplicate column" means already applied.
+const MIGRATIONS = [
+  "ALTER TABLE users ADD COLUMN runs_used INTEGER NOT NULL DEFAULT 0",
+  "ALTER TABLE users ADD COLUMN runs_limit INTEGER NOT NULL DEFAULT 10",
+  "ALTER TABLE search_history ADD COLUMN user_id TEXT",
+];
+
+async function migrate(env) {
+  for (const sql of MIGRATIONS) {
+    try {
+      await env.DB.prepare(sql).run();
+    } catch (e) {
+      if (!/duplicate column/i.test(String(e?.message || e))) throw e;
+    }
+  }
+}
 
 // Schema + admin seed run once per isolate (idempotent), so a fresh D1 database needs no manual migration step.
 let ready;
@@ -29,6 +49,7 @@ function ensureReady(env) {
   if (!env.DB) throw new HttpError(500, "Database is not configured");
   ready ||= (async () => {
     await env.DB.batch(SCHEMA.map((s) => env.DB.prepare(s)));
+    await migrate(env);
     await seedAdmin(env);
   })().catch((e) => {
     ready = undefined;
@@ -50,6 +71,32 @@ async function loadConfig(env) {
 }
 
 const publicUser = (u) => ({ id: u.id, email: u.email, created_at: u.created_at });
+
+// ---- Run allowance: non-admins get FREE_RUNS searches, then request RUN_TOPUP more from the admin.
+const freeRuns = (env) => num(env, "FREE_RUNS", 10);
+const topUpRuns = (env) => num(env, "RUN_TOPUP", 5);
+const isAdmin = (u) => u.role === "admin";
+
+async function runStatus(env, u) {
+  if (isAdmin(u)) return { unlimited: true, runs_used: u.runs_used ?? 0, runs_limit: null, runs_left: null, pending_request: false };
+  const used = u.runs_used ?? 0;
+  const limit = u.runs_limit ?? freeRuns(env);
+  const pending = await env.DB.prepare("SELECT 1 FROM run_requests WHERE user_id = ? AND status = 'pending'").bind(u.id).first();
+  return { unlimited: false, runs_used: used, runs_limit: limit, runs_left: Math.max(0, limit - used), pending_request: Boolean(pending) };
+}
+
+const meBody = async (env, u) => ({
+  id: u.id, email: u.email, created_at: u.created_at, role: u.role || "user", runs: await runStatus(env, u),
+});
+
+async function pendingRequest(env, id) {
+  const row = await env.DB.prepare("SELECT id, user_id FROM run_requests WHERE id = ? AND status = 'pending'").bind(id).first();
+  if (!row) throw new HttpError(404, "Request not found or already handled");
+  return row;
+}
+
+const resolveRequest = (env, id, status) =>
+  env.DB.prepare("UPDATE run_requests SET status = ?, resolved_at = ? WHERE id = ?").bind(status, new Date().toISOString(), id).run();
 const authOk = async (env, request, user, status = 200, extra = {}) => {
   const token = await signToken(env, user.id, user.email);
   return json(
@@ -94,8 +141,10 @@ const handlers = {
     }
     const user = { id: crypto.randomUUID(), email, created_at: new Date().toISOString() };
     try {
-      await env.DB.prepare("INSERT INTO users (id, email, password, role, created_at) VALUES (?, ?, ?, 'user', ?)")
-        .bind(user.id, email, await hashPassword(password), user.created_at)
+      await env.DB.prepare(
+        "INSERT INTO users (id, email, password, role, created_at, runs_used, runs_limit) VALUES (?, ?, ?, 'user', ?, 0, ?)",
+      )
+        .bind(user.id, email, await hashPassword(password), user.created_at, freeRuns(env))
         .run();
     } catch {
       throw new HttpError(400, "Email already registered");
@@ -115,15 +164,72 @@ const handlers = {
 
   "POST /auth/logout": async (env, request) => json({ success: true }, 200, { "set-cookie": cookieHeader(request, "") }),
 
-  "GET /auth/me": async (env, request) => {
-    const u = await currentUser(env, request);
-    return { id: u.id, email: u.email, created_at: u.created_at };
+  "POST /auth/reset-password": async (env, request) => {
+    await rateLimit(env, request, "reset");
+    const body = await readJson(request);
+    const { email, password } = credentials({ email: body?.email, password: body?.new_password });
+    if (password.length < 8) throw new HttpError(422, "New password must be at least 8 characters");
+    const keywordOk = await keywordMatches(env, body?.keyword);
+    const row = await env.DB.prepare("SELECT id, email FROM users WHERE email = ?").bind(email).first();
+    if (!keywordOk || !row) throw new HttpError(401, "Email or keyword is incorrect");
+    await env.DB.prepare("UPDATE users SET password = ? WHERE id = ?").bind(await hashPassword(password), row.id).run();
+    return authOk(env, request, row);
   },
+
+  "GET /auth/me": async (env, request) => meBody(env, await currentUser(env, request)),
 
   "GET /users": async (env, request) => {
     await requireAdmin(env, request);
-    const { results } = await env.DB.prepare("SELECT id, email, created_at FROM users LIMIT 100").all();
+    const { results } = await env.DB.prepare(
+      "SELECT id, email, role, created_at, runs_used, runs_limit FROM users ORDER BY created_at DESC LIMIT 500",
+    ).all();
     return results;
+  },
+
+  "POST /runs/request": async (env, request) => {
+    const u = await currentUser(env, request);
+    if (isAdmin(u)) throw new HttpError(400, "Admins have unlimited runs");
+    const status = await runStatus(env, u);
+    if (status.runs_left > 1) throw new HttpError(400, "You can request more runs once you reach your last run");
+    if (!status.pending_request) {
+      await env.DB.prepare("INSERT INTO run_requests (id, user_id, status, created_at) VALUES (?, ?, 'pending', ?)")
+        .bind(crypto.randomUUID(), u.id, new Date().toISOString()).run();
+    }
+    return { success: true, runs: { ...status, pending_request: true } };
+  },
+
+  "GET /admin/run-requests": async (env, request) => {
+    await requireAdmin(env, request);
+    const { results } = await env.DB.prepare(
+      `SELECT r.id, r.user_id, r.created_at, u.email, u.runs_used, u.runs_limit
+       FROM run_requests r JOIN users u ON u.id = r.user_id WHERE r.status = 'pending' ORDER BY r.created_at`,
+    ).all();
+    return { requests: results, top_up: topUpRuns(env) };
+  },
+
+  "POST /admin/run-requests/:id/approve": async (env, request, url, [id]) => {
+    await requireAdmin(env, request);
+    const req = await pendingRequest(env, id);
+    await env.DB.prepare("UPDATE users SET runs_limit = runs_limit + ? WHERE id = ?").bind(topUpRuns(env), req.user_id).run();
+    await resolveRequest(env, id, "approved");
+    return { success: true, granted: topUpRuns(env) };
+  },
+
+  "POST /admin/run-requests/:id/deny": async (env, request, url, [id]) => {
+    await requireAdmin(env, request);
+    await pendingRequest(env, id);
+    await resolveRequest(env, id, "denied");
+    return { success: true };
+  },
+
+  "POST /admin/users/:id/grant-runs": async (env, request, url, [id]) => {
+    await requireAdmin(env, request);
+    const r = await env.DB.prepare("UPDATE users SET runs_limit = runs_limit + ? WHERE id = ? AND role != 'admin'")
+      .bind(topUpRuns(env), id).run();
+    if (!r.meta.changes) throw new HttpError(404, "User not found");
+    await env.DB.prepare("UPDATE run_requests SET status = 'approved', resolved_at = ? WHERE user_id = ? AND status = 'pending'")
+      .bind(new Date().toISOString(), id).run();
+    return { success: true, granted: topUpRuns(env) };
   },
 
   "GET /config": async (env) => {
@@ -186,23 +292,28 @@ const handlers = {
     return { success: true, message: "Configuration reset to defaults" };
   },
 
+  // History is private per user; the admin sees everyone's.
   "GET /history": async (env, request, url) => {
-    await currentUser(env, request);
+    const u = await currentUser(env, request);
     const limit = int(url.searchParams.get("limit"), "limit", { min: 1, max: 200, def: 50 });
-    const { results } = await env.DB.prepare("SELECT * FROM search_history ORDER BY timestamp DESC LIMIT ?").bind(limit).all();
+    const { results } = await env.DB.prepare(
+      `SELECT * FROM search_history ${isAdmin(u) ? "" : "WHERE user_id = ?2"} ORDER BY timestamp DESC LIMIT ?1`,
+    ).bind(limit, ...(isAdmin(u) ? [] : [u.id])).all();
     return { history: results.map(historyRow) };
   },
 
   "GET /history/:id": async (env, request, url, [id]) => {
-    await currentUser(env, request);
+    const u = await currentUser(env, request);
     const row = await env.DB.prepare("SELECT * FROM search_history WHERE id = ?").bind(id).first();
-    if (!row) throw new HttpError(404, "History entry not found");
+    if (!row || (!isAdmin(u) && row.user_id !== u.id)) throw new HttpError(404, "History entry not found");
     return historyRow(row);
   },
 
   "DELETE /history/:id": async (env, request, url, [id]) => {
-    await currentUser(env, request);
-    const r = await env.DB.prepare("DELETE FROM search_history WHERE id = ?").bind(id).run();
+    const u = await currentUser(env, request);
+    const r = isAdmin(u)
+      ? await env.DB.prepare("DELETE FROM search_history WHERE id = ?").bind(id).run()
+      : await env.DB.prepare("DELETE FROM search_history WHERE id = ? AND user_id = ?").bind(id, u.id).run();
     if (!r.meta.changes) throw new HttpError(404, "History entry not found");
     return { success: true, message: "History entry deleted" };
   },
@@ -214,11 +325,12 @@ const handlers = {
   },
 
   "GET /search-history": async (env, request, url) => {
-    await currentUser(env, request);
+    const u = await currentUser(env, request);
     const limit = int(url.searchParams.get("limit"), "limit", { min: 1, max: 100, def: 10 });
     const { results } = await env.DB.prepare(
-      "SELECT id, category, location, results_count, timestamp FROM search_history ORDER BY timestamp DESC LIMIT ?",
-    ).bind(limit).all();
+      `SELECT id, category, location, results_count, timestamp FROM search_history
+       ${isAdmin(u) ? "" : "WHERE user_id = ?2"} ORDER BY timestamp DESC LIMIT ?1`,
+    ).bind(limit, ...(isAdmin(u) ? [] : [u.id])).all();
     return { history: results };
   },
 
@@ -237,12 +349,31 @@ const handlers = {
   }),
 
   "POST /places/search": async (env, request) => {
+    const user = await currentUser(env, request);
     await rateLimit(env, request, "search");
     const cfg = await loadConfig(env);
     const req = normalizeSearchRequest(await readJson(request), cfg);
-    const places = await searchPlaces(env, req, cfg);
-    await persistHistory(env, req, places);
-    return paginate(places, req.page, req.perPage);
+    const metered = !isAdmin(user);
+    if (metered) {
+      // Reserve a run atomically so parallel requests can't overspend; refunded if the search fails.
+      const r = await env.DB.prepare("UPDATE users SET runs_used = runs_used + 1 WHERE id = ? AND runs_used < runs_limit")
+        .bind(user.id).run();
+      if (!r.meta.changes) throw new HttpError(402, "You've used all your runs. Ask the admin for more.");
+    }
+    const refund = () => env.DB.prepare("UPDATE users SET runs_used = MAX(runs_used - 1, 0) WHERE id = ?").bind(user.id).run();
+    let places;
+    try {
+      places = await searchPlaces(env, req, cfg);
+    } catch (e) {
+      if (metered) await refund();
+      throw e;
+    }
+    // Empty results (no matches, or Google erroring quietly) don't cost a run.
+    const charged = metered && places.length > 0;
+    if (metered && !charged) await refund();
+    await persistHistory(env, req, places, user.id);
+    const runs = await runStatus(env, charged ? { ...user, runs_used: (user.runs_used ?? 0) + 1 } : user);
+    return { ...paginate(places, req.page, req.perPage), runs };
   },
 
   "GET /places/photo": (env, request, url) => photoProxy(env, url),

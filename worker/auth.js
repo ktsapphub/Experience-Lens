@@ -77,7 +77,7 @@ export async function currentUser(env, request) {
   }
   if (!token) throw new HttpError(401, "Not authenticated");
   const payload = await verifyToken(env, token);
-  const user = await env.DB.prepare("SELECT id, email, role, created_at FROM users WHERE id = ?")
+  const user = await env.DB.prepare("SELECT id, email, role, created_at, runs_used, runs_limit FROM users WHERE id = ?")
     .bind(String(payload.sub))
     .first();
   if (!user) throw new HttpError(401, "User not found");
@@ -137,4 +137,16 @@ export async function seedAdmin(env) {
       .bind(await hashPassword(env.ADMIN_PASSWORD), fp, row.id)
       .run();
   }
+}
+
+// Keyword password reset: the keyword lives only in the RESET_KEYWORD Worker secret (never in this public repo).
+// Case-insensitive, compared as SHA-256 digests in constant time.
+export async function keywordMatches(env, keyword) {
+  const want = (env.RESET_KEYWORD || "").trim().toLowerCase();
+  if (!want) throw new HttpError(403, "Password reset is not set up");
+  const digest = async (v) => new Uint8Array(await crypto.subtle.digest("SHA-256", enc.encode(v)));
+  const [a, b] = await Promise.all([digest(String(keyword || "").trim().toLowerCase()), digest(want)]);
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i];
+  return diff === 0;
 }
